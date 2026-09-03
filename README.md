@@ -6,6 +6,10 @@ BharatNet AIOps NOC Commander is a telecom AIOps platform designed to transform 
 
 Thousands of network alerts should become one explainable incident.
 
+Status: Prototype / Hackathon Demonstration
+Domain: Telecom AIOps / Network Operations
+Core Focus: Alert Correlation, Root Cause, Blast Radius, Business Impact, Runbooks
+
 Overview
 
 A single telecom failure can generate hundreds or thousands of downstream alerts. BharatNet focuses on identifying the event that actually matters instead of treating every symptom as an independent failure.
