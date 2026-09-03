@@ -2221,17 +2221,33 @@ function updateFinancialChart(dt){
 }
 
 function updateOutageCost(){
-  const isInc = (SIM.phase !== 'normal');
-  const rate = (SIM.financialRate > 0) ? SIM.financialRate : (isInc ? (SIM.peakRate || 8547) : 0);
+  const baseRate = 8547;
+  const rate = (SIM.financialRate > 0) ? SIM.financialRate : ((SIM.phase !== 'normal') ? (SIM.peakRate || baseRate) : baseRate);
   document.getElementById('cost-sec').textContent = '₹' + Math.round(rate).toLocaleString('en-IN');
   document.getElementById('cost-min').textContent = '₹' + Math.round(rate * 60).toLocaleString('en-IN');
   document.getElementById('cost-10min').textContent = '₹' + Math.round(rate * 600).toLocaleString('en-IN');
+
+  const liveFig = document.getElementById('impact-figure');
+  if(liveFig){
+    if(SIM.financialRate > 0){
+      liveFig.innerHTML = '₹' + Math.round(SIM.financialRate).toLocaleString('en-IN') + '<span class="impact-unit">/sec</span>';
+      liveFig.style.color = 'var(--crit)';
+    } else if(SIM.phase === 'healthy'){
+      liveFig.innerHTML = '₹0<span class="impact-unit">/sec</span>';
+      liveFig.style.color = 'var(--ok)';
+    } else {
+      liveFig.innerHTML = '₹0<span class="impact-unit">/sec</span>';
+      liveFig.style.color = 'var(--ink-0)';
+    }
+  }
+
   const finalEl = document.getElementById('cost-final');
   if(finalEl){
-    finalEl.textContent = '₹' + Math.round(SIM.financialTotal).toLocaleString('en-IN');
     if(SIM.financialTotal > 0){
+      finalEl.textContent = '₹' + Math.round(SIM.financialTotal).toLocaleString('en-IN');
       finalEl.style.color = (SIM.phase === 'healthy') ? 'var(--ok)' : 'var(--crit)';
     } else {
+      finalEl.textContent = '₹0';
       finalEl.style.color = 'var(--ink-1)';
     }
   }
@@ -2240,12 +2256,25 @@ function updateOutageCost(){
 function updateServiceBreakdown(){
   const total = SIM.financialTotal;
   const maxShare = Math.max(...Object.values(SERVICE_SHARE));
-  Object.entries(SERVICE_SHARE).forEach(([svc,share])=>{
+  const baselineServiceRates = { payments: 8540, enterprise: 6200, retail: 3800, iot: 1500 };
+  const maxBase = 8540;
+
+  Object.entries(SERVICE_SHARE).forEach(([svc, share]) => {
     const row = document.querySelector(`.breakdown-row[data-svc="${svc}"]`);
     if(!row) return;
-    const val = total*share;
-    row.querySelector('.bd-fill').style.width = (total>0 ? (share/maxShare*100) : 0)+'%';
-    row.querySelector('.bd-val').textContent = '₹'+Math.round(val).toLocaleString('en-IN');
+    if(total > 0){
+      const val = total * share;
+      const fillPct = share / maxShare * 100;
+      row.querySelector('.bd-fill').style.width = fillPct + '%';
+      row.querySelector('.bd-fill').style.background = (SIM.phase === 'healthy') ? 'var(--ok)' : 'var(--crit)';
+      row.querySelector('.bd-val').textContent = '₹' + Math.round(val).toLocaleString('en-IN');
+    } else {
+      const baseRate = baselineServiceRates[svc] || 2000;
+      const fillPct = (baseRate / maxBase) * 85;
+      row.querySelector('.bd-fill').style.width = fillPct + '%';
+      row.querySelector('.bd-fill').style.background = 'var(--fiber)';
+      row.querySelector('.bd-val').textContent = '₹' + baseRate.toLocaleString('en-IN') + '/s';
+    }
   });
 }
 
@@ -2254,14 +2283,25 @@ function updateLossAvoided(){
   const el = document.getElementById('loss-avoided-figure');
   const sub = document.getElementById('loss-avoided-sub');
   if(!el) return;
-  if(!SIM.peakRate){
-    el.textContent = '₹0';
-    sub.textContent = 'Estimated savings from AI-assisted vs manual recovery';
-    return;
+
+  const rate = (SIM.financialRate > 0) ? SIM.financialRate : (SIM.peakRate || 8547);
+  const manualMin = window.BACKEND_METRICS?.mttr_manual_min ? Math.round(window.BACKEND_METRICS.mttr_manual_min) : 47;
+  const aiMin = window.BACKEND_METRICS?.mttr_ai_min ? Math.round(window.BACKEND_METRICS.mttr_ai_min) : 9;
+  const savings = rate * (manualMin - aiMin) * 60;
+
+  if(window.BACKEND_METRICS?.total_savings_cr_str){
+    el.textContent = window.BACKEND_METRICS.total_savings_cr_str;
+  } else {
+    el.textContent = '₹' + Math.round(savings).toLocaleString('en-IN');
   }
-  const savings = SIM.peakRate*(MTTR_MANUAL_SEC-MTTR_AI_SEC);
-  el.textContent = '₹'+Math.round(savings).toLocaleString('en-IN');
-  sub.textContent = `Avoided by resolving in ~9 min instead of ~47 min at a peak of ₹${Math.round(SIM.peakRate).toLocaleString('en-IN')}/sec`;
+
+  if(SIM.phase !== 'normal' && SIM.phase !== 'healthy'){
+    sub.textContent = `Avoided in real-time by resolving in ~${aiMin} min instead of ~${manualMin} min manual at ₹${Math.round(rate).toLocaleString('en-IN')}/sec`;
+  } else if(SIM.phase === 'healthy'){
+    sub.textContent = `Final loss avoided: resolved in ~${aiMin} min vs ~${manualMin} min manual baseline exposure`;
+  } else {
+    sub.textContent = `Estimated savings from AI-assisted (~${aiMin} min) vs manual recovery (~${manualMin} min) at ₹${Math.round(rate).toLocaleString('en-IN')}/sec`;
+  }
 }
 
 function resetFinancialChart(){
@@ -2473,15 +2513,64 @@ window.addEventListener('resize', sizePred);
 sizePred();
 resetPredictiveChart();
 
+// Continuous real-time financial chart baseline ticker
+function liveFinancialBaselineTicker(){
+  if(SIM.phase === 'normal'){
+    financialHistory.push({
+      t: financialHistory.length,
+      val: 0,
+      phase: 'normal'
+    });
+    if(financialHistory.length > 25) financialHistory.shift();
+    drawFinancial();
+  } else if(SIM.phase === 'healthy'){
+    financialHistory.push({
+      t: financialHistory.length,
+      val: SIM.financialTotal,
+      phase: 'healthy'
+    });
+    if(financialHistory.length > 40) financialHistory.shift();
+    drawFinancial();
+  }
+}
+
+// Continuous real-time predictive optical power telemetry stream
+setInterval(()=>{
+  if(SIM.phase === 'normal'){
+    const jitter = (Math.sin(Date.now() / 1400) * 0.04) + ((Math.random() - 0.5) * 0.02);
+    const val = Number((-3.12 + jitter).toFixed(2));
+    predHistory.push({
+      t: new Date().toLocaleTimeString('en-IN', { hour12: false }),
+      dbm: val,
+      stage: 'nominal'
+    });
+    if(predHistory.length > 25) predHistory.shift();
+    drawPredictive();
+  } else if(SIM.phase === 'healthy'){
+    const jitter = (Math.sin(Date.now() / 1800) * 0.03);
+    const val = Number((-3.10 + jitter).toFixed(2));
+    predHistory.push({
+      t: new Date().toLocaleTimeString('en-IN', { hour12: false }),
+      dbm: val,
+      stage: 'recovery'
+    });
+    if(predHistory.length > 35) predHistory.shift();
+    drawPredictive();
+  }
+}, 1200);
+
 // Periodic interval to keep hidden-to-visible canvases sized and metrics fresh
 setInterval(()=>{
   if(!SIM.frozen){
     updateFinancialTicker(500);
     updateFinancialChart(500);
+  } else {
+    liveFinancialBaselineTicker();
   }
   updateOutageCost();
   updateServiceBreakdown();
   updateLossAvoided();
+  renderMTTR(SIM.phase !== 'normal');
 
   if(financialCanvas.clientWidth > 0 && financialCanvas.width !== Math.round(financialCanvas.clientWidth * (window.devicePixelRatio||1))){
     sizeFinancial();
@@ -2492,16 +2581,32 @@ setInterval(()=>{
     drawPredictive();
   }
 }, 500);
- 
+
 /* ==================================================================
    16. MTTR VISUAL
    ================================================================== */
 function renderMTTR(active){
   const mFill = document.getElementById('mttr-manual'), aFill=document.getElementById('mttr-ai');
   const mVal = document.getElementById('mttr-manual-val'), aVal=document.getElementById('mttr-ai-val');
-  if(!active){ mFill.style.width='0%'; aFill.style.width='0%'; mVal.textContent='—'; aVal.textContent='—'; return; }
-  mFill.style.width='92%'; mVal.textContent='47 min';
-  aFill.style.width='18%'; aVal.textContent='9 min';
+  if(!mFill || !aFill || !mVal || !aVal) return;
+
+  const manualMin = window.BACKEND_METRICS?.mttr_manual_min ? Math.round(window.BACKEND_METRICS.mttr_manual_min) : 47;
+  const aiMin = window.BACKEND_METRICS?.mttr_ai_min ? Math.round(window.BACKEND_METRICS.mttr_ai_min) : 9;
+  const reductionPct = Math.round(((manualMin - aiMin) / manualMin) * 100);
+
+  mFill.style.width = '92%';
+  mVal.textContent = manualMin + ' min';
+  aFill.style.width = Math.max(12, Math.round((aiMin / manualMin) * 92)) + '%';
+  aVal.textContent = aiMin + ' min';
+
+  const proof = document.getElementById('mttr-proof');
+  if(proof){
+    if(active){
+      proof.textContent = `Incident active: AI correlation and automated tier-1 runbook reduced MTTR from ${manualMin} min manual down to ~${aiMin} min (${reductionPct}% reduction).`;
+    } else {
+      proof.textContent = `Autonomous correlation and runbook matching reduces MTTR from ${manualMin} min manual baseline down to ${aiMin} min (${reductionPct}% reduction).`;
+    }
+  }
 }
  
 /* ==================================================================
@@ -2646,6 +2751,7 @@ function runSimulation(){
     logEvent('ER-MUM-01 UPLINK LINK DOWN','crit');
     advanceTimeline(0);
     SIM.frozen=false; SIM.financialRate=8547; SIM.peakRate=8547;
+    renderUsers(); renderCompanies(); updateOutageCost(); updateLossAvoided();
   }, 300);
  
   // STAGE 1: cascading alerts
@@ -2665,6 +2771,8 @@ function runSimulation(){
       logEvent(msg,'crit');
       renderHealthBand();
       SIM.blastSet.add(id);
+      renderUsers();
+      renderCompanies();
     }, 900 + i*380);
   });
  
@@ -2673,6 +2781,7 @@ function runSimulation(){
     setPhase('correlating');
     logEvent('CORRELATION ENGINE ACTIVATED','warn');
     advanceTimeline(1);
+    renderUsers(); renderCompanies();
   }, 900 + cascade.length*380 + 400);
  
   // STAGE 3: root cause identified
@@ -2688,6 +2797,7 @@ function runSimulation(){
     document.getElementById('cs-impact').textContent='₹8,547/sec';
     advanceTimeline(3);
     renderMTTR(true);
+    renderUsers(); renderCompanies();
     map.flyTo(coordOf('ER-MUM-01'), 13, {duration: REDUCED_MOTION?0:1.2});
   }, 900 + cascade.length*380 + 1600);
  
@@ -2798,6 +2908,9 @@ function beginRecovery(){
     freezeFinancial();
     drawFinancial();
     updateOutageCost();
+    updateLossAvoided();
+    renderUsers();
+    renderCompanies();
     document.getElementById('impact-sub').textContent = 'Incident resolved — impact stopped';
     document.getElementById('financial-ai-explanation').textContent = `AI assessment: the outage has been contained and financial exposure has stopped accumulating. Final estimated impact: ₹${Math.round(SIM.financialTotal).toLocaleString('en-IN')}.`;
     resetBtn.style.display='inline-block';
@@ -2812,24 +2925,53 @@ resetBtn.addEventListener('click', ()=>{
   SIM.financialRate = 0;
   SIM.peakRate = 0;
   SIM.frozen = true;
+  SIM.blastSet.clear();
   resetFinancialChart();
   resetPredictiveChart();
   updateNetworkStatusPills();
+  renderUsers();
+  renderCompanies();
+  updateOutageCost();
+  updateLossAvoided();
+  renderMTTR(false);
   try {
     fetch('http://localhost:8000/api/scenarios/reset', {method:'POST'}).catch(()=>{});
   } catch(e){}
   location.reload();
 });
 
-// Optional WebSocket listener to keep backend sync active without interfering with UI
+// Backend Telemetry Sync: WebSocket + REST polling
+window.BACKEND_METRICS = null;
+
+async function fetchBackendMetrics(){
+  try {
+    const res = await fetch('http://localhost:8000/api/metrics');
+    if(res.ok){
+      const data = await res.json();
+      window.BACKEND_METRICS = data;
+      renderMTTR(SIM.phase !== 'normal');
+      updateLossAvoided();
+    }
+  } catch(e){}
+}
+fetchBackendMetrics();
+setInterval(fetchBackendMetrics, 3000);
+
 try {
   const ws = new WebSocket('ws://localhost:8000/ws/telemetry');
   ws.onopen = () => console.log('Connected to BharatNet AIOps Backend telemetry');
   ws.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data);
+      if(msg.type === 'INIT_SNAPSHOT' || msg.type === 'METRICS_UPDATE'){
+        const m = msg.type === 'INIT_SNAPSHOT' ? msg.data.metrics : msg.data;
+        if(m){
+          window.BACKEND_METRICS = m;
+          renderMTTR(SIM.phase !== 'normal');
+          updateLossAvoided();
+        }
+      }
       if (msg.type === 'ALERT_STREAM' && SIM.phase === 'normal') {
-        // Only log background alerts when network is nominal
         logEvent(msg.data.description, msg.data.severity === 'CRITICAL' ? 'crit' : 'info');
       }
     } catch(e){}
@@ -2986,10 +3128,11 @@ function renderCompanies() {
       document.getElementById('cd-status').style.color = color;
       document.getElementById('cd-dep').textContent = c.dep + '%';
       
-      let u = c.users; let r = '₹' + c.rev + ' Lakh/hr';
-      if(!isInc) { u = '0'; r = '₹0 /hr'; }
+      const u = c.users;
+      const r = '₹' + c.rev + ' Lakh/hr';
       document.getElementById('cd-users').textContent = u;
       document.getElementById('cd-rev').textContent = r;
+      document.getElementById('cd-rev').style.color = isInc ? color : 'var(--ink-0)';
       
       document.getElementById('cd-services').innerHTML = c.svc.map(s=>'<li>• '+s+'</li>').join('');
       document.getElementById('cd-locations').innerHTML = c.loc.map(s=>'<li>'+s+'</li>').join('');
@@ -3013,55 +3156,81 @@ function renderUsers() {
   
   let ratio = 0;
   if(isInc) {
-    ratio = Math.min(1, Math.max(0.1, Array.from(SIM.blastSet).length / 23));
+    ratio = Math.min(1, Math.max(0.12, (SIM.blastSet.size || 1) / 12));
+  } else if(SIM.phase === 'healthy' && SIM.peakRate > 0) {
+    ratio = 1;
   }
   
   const imp = document.getElementById('sub-impacted');
   if(!imp) return;
-  imp.textContent = Math.floor(maxImpacted * ratio).toLocaleString();
-  document.getElementById('sub-5g').textContent = Math.floor(max5g * ratio).toLocaleString();
-  document.getElementById('sub-upi').textContent = Math.floor(maxUpi * ratio).toLocaleString();
-  document.getElementById('sub-ent').textContent = Math.floor(maxEnt * ratio).toLocaleString();
+  const currentImpacted = Math.floor(maxImpacted * ratio);
+  imp.textContent = (isInc || (SIM.phase === 'healthy' && SIM.peakRate > 0)) ? currentImpacted.toLocaleString() : '0';
+  imp.style.color = isInc ? 'var(--crit)' : ((SIM.phase === 'healthy' && SIM.peakRate > 0) ? 'var(--ok)' : 'var(--ink-1)');
+
+  const el5g = document.getElementById('sub-5g');
+  const elUpi = document.getElementById('sub-upi');
+  const elEnt = document.getElementById('sub-ent');
+
+  if(el5g){
+    el5g.textContent = (isInc ? Math.floor(max5g * ratio) : max5g).toLocaleString();
+    el5g.style.color = isInc ? 'var(--crit)' : 'var(--ink-0)';
+  }
+  if(elUpi){
+    elUpi.textContent = (isInc ? Math.floor(maxUpi * ratio) : maxUpi).toLocaleString();
+    elUpi.style.color = isInc ? 'var(--crit)' : 'var(--ink-0)';
+  }
+  if(elEnt){
+    elEnt.textContent = (isInc ? Math.floor(maxEnt * ratio) : maxEnt).toLocaleString();
+    elEnt.style.color = isInc ? 'var(--crit)' : 'var(--ink-0)';
+  }
   
   const geo = [
-    {n:'Mumbai City', v: 72410},
-    {n:'Thane', v: 41208},
-    {n:'Navi Mumbai', v: 28492},
-    {n:'Mira-Bhayandar', v: 18302},
-    {n:'Other', v: 23792}
+    {n:'Mumbai City', v: 72410, basePct: 39},
+    {n:'Thane', v: 41208, basePct: 22},
+    {n:'Navi Mumbai', v: 28492, basePct: 15},
+    {n:'Mira-Bhayandar', v: 18302, basePct: 10},
+    {n:'Other', v: 23792, basePct: 13}
   ];
   
   const geoEl = document.getElementById('sub-geo');
-  geoEl.innerHTML = '';
-  let geoVals = [];
-  geo.forEach(g => {
-    let val = Math.floor(g.v * ratio);
-    geoVals.push(val);
-    let pct = (val / 80000) * 100;
-    let color = isInc ? 'var(--crit)' : 'var(--amber)';
-    geoEl.innerHTML += `<div class="breakdown-row"><span class="bd-name">${g.n}</span><div class="bd-track"><div class="bd-fill" style="width:${pct}%; background:${color}"></div></div><span class="bd-val">${val.toLocaleString()}</span></div>`;
-  });
+  if(geoEl){
+    geoEl.innerHTML = '';
+    geo.forEach(g => {
+      const displayVal = isInc ? Math.floor(g.v * ratio) : g.v;
+      const barPct = isInc ? Math.min(100, Math.floor((displayVal / 75000) * 100)) : (g.basePct * 2);
+      const color = isInc ? 'var(--crit)' : 'var(--fiber)';
+      geoEl.innerHTML += `<div class="breakdown-row"><span class="bd-name">${g.n}</span><div class="bd-track"><div class="bd-fill" style="width:${barPct}%; background:${color}"></div></div><span class="bd-val">${displayVal.toLocaleString()}</span></div>`;
+    });
+  }
 
-  // Simple ChartJS rendering for User Heatmap
+  // Live ChartJS rendering for User Heatmap
   if(window.Chart) {
     const ctx = document.getElementById('sub-heatmap-chart');
-    if(subHeatmapChart) subHeatmapChart.destroy();
-    subHeatmapChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: geo.map(g=>g.n),
-        datasets: [{
-          data: geoVals,
-          backgroundColor: ['#ef5b5b', '#f2a93b', '#5fb4ff', '#3fd6c4', '#5f7488'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'right', labels: {color: '#9fb2c3', font:{family:'SFMono-Regular'}} } },
-        cutout: '75%'
+    if(ctx){
+      const chartVals = geo.map(g => isInc ? Math.max(100, Math.floor(g.v * ratio)) : g.v);
+      if(!subHeatmapChart){
+        subHeatmapChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: geo.map(g=>g.n),
+            datasets: [{
+              data: chartVals,
+              backgroundColor: ['#ef5b5b', '#f2a93b', '#5fb4ff', '#3fd6c4', '#5f7488'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 350 },
+            plugins: { legend: { position: 'right', labels: {color: '#9fb2c3', font:{family:'SFMono-Regular, monospace', size: 10}} } },
+            cutout: '72%'
+          }
+        });
+      } else {
+        subHeatmapChart.data.datasets[0].data = chartVals;
+        subHeatmapChart.update('none');
       }
-    });
+    }
   }
 }
 
@@ -3090,6 +3259,10 @@ setInterval(() => {
 // Initialize views on first load
 renderCompanies();
 renderUsers();
+updateOutageCost();
+updateServiceBreakdown();
+updateLossAvoided();
+renderMTTR(false);
 
 /* init */
 setPhase('normal');
