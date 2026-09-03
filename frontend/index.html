@@ -249,7 +249,7 @@ button{font-family:inherit; cursor:pointer;}
 .predictive-grid{ grid-template-columns:1.25fr 1fr; }
 .metric-card{ background:var(--bg-1); padding:1em 1.1em; min-height:150px; }
 .chart-card{ position:relative; }
-.financial-chart{ width:100%; height:95px; display:block; margin-top:.65em; }
+.financial-chart{ width:100%; height:110px; display:block; margin-top:.65em; }
 .ai-explain-card{ border-left:2px solid var(--fiber); }
 .ai-badge{ display:inline-block; margin:.75em 0 .55em; padding:.28em .5em; border:1px solid var(--fiber-dim); color:var(--fiber); font-family:var(--mono); font-size:.55rem; letter-spacing:.1em; }
 #financial-ai-explanation{ color:var(--ink-1); font-size:.8rem; line-height:1.55; max-width:560px; }
@@ -476,7 +476,7 @@ button{font-family:inherit; cursor:pointer;}
 .impact-figure.frozen{ color:var(--ok); }
 .impact-sub{ font-size:.68rem; color:var(--ink-2); letter-spacing:.05em; margin-top:.3em; }
  
-.mini-chart{ width:100%; height:60px; display:block; }
+.mini-chart{ width:100%; height:110px; display:block; margin:.4em 0; }
  
 .mttr-row{ display:flex; align-items:center; gap:.7em; margin-bottom:.6em; }
 .mttr-label{ width:76px; font-size:.66rem; color:var(--ink-2); letter-spacing:.06em; flex-shrink:0; }
@@ -911,6 +911,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
             <div class="cost-row"><span>PER SECOND</span><b id="cost-sec">₹0</b></div>
             <div class="cost-row"><span>PER MINUTE</span><b id="cost-min">₹0</b></div>
             <div class="cost-row"><span>PER 10 MINUTES</span><b id="cost-10min">₹0</b></div>
+            <div class="cost-row" style="margin-top:6px; padding-top:6px; border-top:1px solid var(--panel-line);"><span style="color:var(--fiber);">FINAL ESTIMATED IMPACT</span><b id="cost-final" style="color:var(--crit);">₹0</b></div>
           </div>
         </div>
         <div class="metric-card breakdown-card">
@@ -1236,29 +1237,37 @@ function setPhase(p){
   renderMapState();
 }
  
-function updateStatePill(){
-  const el = document.getElementById('state-pill');
-  const map = {
-    normal:['NORMAL OPERATIONS','state-normal'],
-    storm:['ALERT STORM','state-alert'],
-    correlating:['CORRELATING SIGNALS','state-working'],
-    rootcause:['ROOT CAUSE IDENTIFIED','state-working'],
-    rerouting:['DYNAMIC REROUTING','state-working'],
-    runbook:['RUNBOOK IN PROGRESS','state-working'],
-    recovering:['RECOVERING','state-working'],
-    healthy:['NETWORK RESTORED','state-normal'],
-  };
-  const [txt,cls] = map[SIM.phase] || map.normal;
-  el.textContent = txt;
-  el.className = 'pill ' + cls;
+function updateNetworkStatusPills(){
+  const healthEl = document.getElementById('net-health-pill');
+  const stateEl = document.getElementById('state-pill');
+  if(!healthEl || !stateEl) return;
+
+  if (SIM.phase === 'normal') {
+    // NORMAL
+    healthEl.textContent = 'NETWORK HEALTHY';
+    healthEl.style.color = 'var(--ok)';
+    healthEl.style.borderColor = 'var(--ok)';
+    stateEl.textContent = 'NORMAL OPERATIONS';
+    stateEl.className = 'pill state-normal';
+  } else if (SIM.phase === 'healthy') {
+    // RECOVERY
+    healthEl.textContent = 'NETWORK HEALTHY';
+    healthEl.style.color = 'var(--ok)';
+    healthEl.style.borderColor = 'var(--ok)';
+    stateEl.textContent = 'NETWORK RESTORED';
+    stateEl.className = 'pill state-normal';
+  } else {
+    // INCIDENT ACTIVE (storm, correlating, rootcause, rerouting, runbook, recovering)
+    healthEl.textContent = 'NETWORK DEGRADED';
+    healthEl.style.color = 'var(--crit)';
+    healthEl.style.borderColor = 'var(--crit)';
+    stateEl.textContent = 'INCIDENT ACTIVE';
+    stateEl.className = 'pill state-alert';
+  }
 }
- 
-function updateHealthPill(){
-  const el = document.getElementById('net-health-pill');
-  if(SIM.phase==='normal' || SIM.phase==='healthy'){ el.textContent='NETWORK HEALTHY'; el.style.color='var(--ok)'; el.style.borderColor='var(--ok)'; }
-  else if(SIM.phase==='storm' || SIM.phase==='rootcause'){ el.textContent='NETWORK CRITICAL'; el.style.color='var(--crit)'; el.style.borderColor='var(--crit)'; }
-  else { el.textContent='NETWORK DEGRADED'; el.style.color='var(--amber)'; el.style.borderColor='var(--amber)'; }
-}
+
+function updateStatePill(){ updateNetworkStatusPills(); }
+function updateHealthPill(){ updateNetworkStatusPills(); }
  
 /* ==================================================================
    1. NETWORK TOPOLOGY DATA MODEL
@@ -1907,6 +1916,11 @@ document.getElementById('layer-switcher').addEventListener('click', (e)=>{
     SIM.activeLayer = 'all';
     grid.classList.add('feature-hidden');
     stage.classList.add('feature-visible');
+    if(feature === 'financial'){
+      setTimeout(()=>{ sizeFinancial(); drawFinancial(); }, 15);
+    } else if(feature === 'predictive'){
+      setTimeout(()=>{ sizePred(); drawPredictive(); }, 15);
+    }
   } else {
     SIM.activeLayer = btn.dataset.layer;
     grid.classList.remove('feature-hidden');
@@ -2031,89 +2045,196 @@ function freezeFinancial(){
  
 /* ==================================================================
    14. FINANCIAL IMPACT CHART + AI EXPLANATION
-   Rendered like a stock-market ticker: the line and the filled area
-   below it turn red while the loss is growing (worsening incident)
-   and green while it is flat/falling (recovery, i.e. "profit" back).
    ================================================================== */
 const financialCanvas = document.getElementById('financial-chart');
 const financialCtx = financialCanvas.getContext('2d');
 const financialHistory = [];
+
 function sizeFinancial(){
-  const dpr=Math.min(window.devicePixelRatio||1,2);
-  financialCanvas.width=financialCanvas.clientWidth*dpr; financialCanvas.height=95*dpr;
-  financialCtx.setTransform(dpr,0,0,dpr,0,0);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = financialCanvas.clientWidth || financialCanvas.parentElement?.clientWidth || 540;
+  const h = 110;
+  if(w > 0){
+    financialCanvas.width = Math.round(w * dpr);
+    financialCanvas.height = Math.round(h * dpr);
+    financialCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
+
+function formatInrShort(v){
+  if(v >= 10000000) return '₹' + (v / 10000000).toFixed(1) + 'Cr';
+  if(v >= 100000) return '₹' + (v / 100000).toFixed(1) + 'L';
+  if(v >= 1000) return '₹' + (v / 1000).toFixed(0) + 'k';
+  return '₹' + Math.round(v);
+}
+
 function drawFinancial(){
-  const w=financialCanvas.clientWidth,h=95;
-  financialCtx.clearRect(0,0,w,h);
-  financialCtx.strokeStyle=getCss('--panel-line'); financialCtx.lineWidth=1;
-  for(let y=20;y<h;y+=25){ financialCtx.beginPath(); financialCtx.moveTo(0,y); financialCtx.lineTo(w,y); financialCtx.stroke(); }
-  if(financialHistory.length<2) return;
+  const w = financialCanvas.clientWidth || 540;
+  const h = 110;
+  if(w > 0 && financialCanvas.width === 0){
+    sizeFinancial();
+  }
+  financialCtx.clearRect(0, 0, w, h);
 
-  const max=Math.max(...financialHistory,1);
-  const min=Math.min(...financialHistory,0);
-  const span=Math.max(max-min,1);
-  const xAt=i=>w*(i/(Math.max(1,financialHistory.length-1)));
-  const yAt=v=>h-8-((v-min)/span)*(h-20);
+  const padL = 58, padR = 25, padT = 16, padB = 22;
+  const plotW = Math.max(10, w - padL - padR);
+  const plotH = Math.max(10, h - padT - padB);
 
-  const okCol = getCss('--ok');
-  const critCol = getCss('--crit');
+  const pts = financialHistory.length > 0 ? financialHistory : [{ t: 0, val: 0, phase: 'normal' }];
+  const vals = pts.map(p => p.val);
+  const rawMax = Math.max(...vals);
+  // Establish clean scale with headroom
+  const maxVal = rawMax > 0 ? Math.ceil(rawMax * 1.25 / 10000) * 10000 : 25000;
+  const minVal = 0;
 
-  const lastUp = financialHistory[financialHistory.length-1] > financialHistory[financialHistory.length-2];
-  const areaCol = lastUp ? critCol : okCol;
-  financialCtx.beginPath();
-  financialHistory.forEach((v,i)=>{
-    const x=xAt(i), y=yAt(v);
-    if(i===0) financialCtx.moveTo(x,y); else financialCtx.lineTo(x,y);
-  });
-  financialCtx.lineTo(xAt(financialHistory.length-1), h);
-  financialCtx.lineTo(xAt(0), h);
-  financialCtx.closePath();
-  financialCtx.globalAlpha = 0.12;
-  financialCtx.fillStyle = areaCol;
-  financialCtx.fill();
-  financialCtx.globalAlpha = 1;
+  const yOf = (val) => padT + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
+  const xOf = (i) => padL + (pts.length <= 1 ? 0 : (i / (pts.length - 1)) * plotW);
 
-  for(let i=1;i<financialHistory.length;i++){
-    const x1=xAt(i-1), y1=yAt(financialHistory[i-1]);
-    const x2=xAt(i), y2=yAt(financialHistory[i]);
-    const rising = financialHistory[i] > financialHistory[i-1];
+  // Background axes & grid
+  financialCtx.strokeStyle = getCss('--panel-line') || '#2d3748';
+  financialCtx.lineWidth = 1;
+
+  // Grid lines & Y labels
+  financialCtx.font = '600 9px ' + (getCss('--mono') || 'monospace');
+  financialCtx.fillStyle = getCss('--ink-2') || '#9fb2c3';
+  financialCtx.textAlign = 'right';
+  financialCtx.textBaseline = 'middle';
+
+  const gridRatios = [0, 0.5, 1.0];
+  gridRatios.forEach(r => {
+    const yVal = minVal + r * (maxVal - minVal);
+    const y = yOf(yVal);
     financialCtx.beginPath();
-    financialCtx.moveTo(x1,y1);
-    financialCtx.lineTo(x2,y2);
-    financialCtx.strokeStyle = rising ? critCol : okCol;
-    financialCtx.lineWidth = 2;
-    financialCtx.lineCap = 'round';
+    financialCtx.moveTo(padL, y);
+    financialCtx.lineTo(w - padR, y);
+    financialCtx.stroke();
+    financialCtx.fillText(formatInrShort(yVal), padL - 8, y);
+  });
+
+  // Time labels at bottom
+  financialCtx.textAlign = 'center';
+  financialCtx.textBaseline = 'top';
+  financialCtx.fillText('T-0s', padL, h - padB + 6);
+  if(pts.length > 12){
+    financialCtx.fillText('INCIDENT ACTIVE', padL + plotW * 0.45, h - padB + 6);
+    financialCtx.fillText(SIM.phase === 'healthy' ? 'RECOVERED' : 'T+' + Math.round(pts.length * 0.5) + 's', w - padR - 10, h - padB + 6);
+  } else {
+    financialCtx.fillText('BASELINE (NORMAL)', padL + plotW * 0.5, h - padB + 6);
+  }
+
+  // Draw fill under curve
+  const okCol = getCss('--ok') || '#3fd6c4';
+  const critCol = getCss('--crit') || '#ef5b5b';
+  const isRising = (SIM.phase !== 'normal' && SIM.phase !== 'healthy' && SIM.financialRate > 0);
+
+  financialCtx.beginPath();
+  pts.forEach((p, i) => {
+    const x = xOf(i), y = yOf(p.val);
+    if(i === 0) financialCtx.moveTo(x, y);
+    else financialCtx.lineTo(x, y);
+  });
+  financialCtx.lineTo(xOf(pts.length - 1), padT + plotH);
+  financialCtx.lineTo(xOf(0), padT + plotH);
+  financialCtx.closePath();
+
+  const fillGrad = financialCtx.createLinearGradient(0, padT, 0, padT + plotH);
+  if(isRising){
+    fillGrad.addColorStop(0, 'rgba(239, 91, 91, 0.28)');
+    fillGrad.addColorStop(1, 'rgba(239, 91, 91, 0.02)');
+  } else if(SIM.phase === 'healthy' && rawMax > 0){
+    fillGrad.addColorStop(0, 'rgba(63, 214, 196, 0.22)');
+    fillGrad.addColorStop(1, 'rgba(63, 214, 196, 0.02)');
+  } else {
+    fillGrad.addColorStop(0, 'rgba(95, 116, 136, 0.08)');
+    fillGrad.addColorStop(1, 'transparent');
+  }
+  financialCtx.fillStyle = fillGrad;
+  financialCtx.fill();
+
+  // Draw line segments
+  financialCtx.lineWidth = 2.2;
+  financialCtx.lineCap = 'round';
+  financialCtx.lineJoin = 'round';
+
+  for(let i = 1; i < pts.length; i++){
+    const x1 = xOf(i - 1), y1 = yOf(pts[i - 1].val);
+    const x2 = xOf(i), y2 = yOf(pts[i].val);
+    financialCtx.beginPath();
+    financialCtx.moveTo(x1, y1);
+    financialCtx.lineTo(x2, y2);
+    if(pts[i].val === 0){
+      financialCtx.strokeStyle = getCss('--panel-line') || '#2d3748';
+    } else if(pts[i].val > pts[i - 1].val){
+      financialCtx.strokeStyle = critCol;
+    } else {
+      financialCtx.strokeStyle = okCol;
+    }
     financialCtx.stroke();
   }
 
-  const last=financialHistory[financialHistory.length-1];
-  const x=xAt(financialHistory.length-1), y=yAt(last);
-  financialCtx.fillStyle= lastUp ? critCol : okCol;
-  financialCtx.beginPath(); financialCtx.arc(x,y,3,0,Math.PI*2); financialCtx.fill();
+  // Draw point on latest value
+  const lastI = pts.length - 1;
+  const lastX = xOf(lastI);
+  const lastY = yOf(pts[lastI].val);
+
+  financialCtx.beginPath();
+  financialCtx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+  financialCtx.fillStyle = isRising ? critCol : (SIM.phase === 'healthy' ? okCol : getCss('--panel-line'));
+  financialCtx.fill();
+  financialCtx.lineWidth = 1.5;
+  financialCtx.strokeStyle = '#fff';
+  financialCtx.stroke();
+
+  // If incident accumulated, display final/live value pill on chart
+  if(pts[lastI].val > 0){
+    financialCtx.font = '700 9.5px ' + (getCss('--mono') || 'monospace');
+    financialCtx.fillStyle = isRising ? critCol : okCol;
+    financialCtx.textAlign = 'right';
+    financialCtx.fillText(
+      '₹' + Math.round(pts[lastI].val).toLocaleString('en-IN') + (SIM.phase === 'healthy' ? ' (FINAL)' : ''),
+      lastX,
+      Math.max(padT + 8, lastY - 8)
+    );
+  }
 }
+
 const SERVICE_SHARE = { payments:0.42, enterprise:0.28, retail:0.22, iot:0.08 };
 const SERVICE_LABEL = { payments:'Payments', enterprise:'Enterprise', retail:'Retail', iot:'IoT/M2M' };
 function topAffectedServices(n){
   return Object.entries(SERVICE_SHARE).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>SERVICE_LABEL[k]);
 }
+
 function updateFinancialChart(dt){
   if(SIM.frozen) return;
-  financialHistory.push(SIM.financialTotal);
-  if(financialHistory.length>90) financialHistory.shift();
+  financialHistory.push({
+    t: financialHistory.length,
+    val: SIM.financialTotal,
+    phase: SIM.phase
+  });
+  if(financialHistory.length > 120) financialHistory.shift();
   drawFinancial();
-  const ai=document.getElementById('financial-ai-explanation');
-  if(SIM.financialRate>0){
+  const ai = document.getElementById('financial-ai-explanation');
+  if(SIM.financialRate > 0 && ai){
     const [top1, top2] = topAffectedServices(2);
     ai.textContent = `AI assessment: the current exposure is approximately ₹${Math.round(SIM.financialRate).toLocaleString('en-IN')} per second because the Mumbai fiber cut is affecting dependent network paths and customer-facing services. ${top1} and ${top2} are the most affected services and account for the largest share of the loss. Exposure will continue to accumulate until traffic is restored.`;
   }
 }
 
 function updateOutageCost(){
-  const rate = SIM.financialRate;
-  document.getElementById('cost-sec').textContent = '₹'+Math.round(rate).toLocaleString('en-IN');
-  document.getElementById('cost-min').textContent = '₹'+Math.round(rate*60).toLocaleString('en-IN');
-  document.getElementById('cost-10min').textContent = '₹'+Math.round(rate*600).toLocaleString('en-IN');
+  const isInc = (SIM.phase !== 'normal');
+  const rate = (SIM.financialRate > 0) ? SIM.financialRate : (isInc ? (SIM.peakRate || 8547) : 0);
+  document.getElementById('cost-sec').textContent = '₹' + Math.round(rate).toLocaleString('en-IN');
+  document.getElementById('cost-min').textContent = '₹' + Math.round(rate * 60).toLocaleString('en-IN');
+  document.getElementById('cost-10min').textContent = '₹' + Math.round(rate * 600).toLocaleString('en-IN');
+  const finalEl = document.getElementById('cost-final');
+  if(finalEl){
+    finalEl.textContent = '₹' + Math.round(SIM.financialTotal).toLocaleString('en-IN');
+    if(SIM.financialTotal > 0){
+      finalEl.style.color = (SIM.phase === 'healthy') ? 'var(--ok)' : 'var(--crit)';
+    } else {
+      finalEl.style.color = 'var(--ink-1)';
+    }
+  }
 }
 
 function updateServiceBreakdown(){
@@ -2144,14 +2265,215 @@ function updateLossAvoided(){
 }
 
 function resetFinancialChart(){
-  financialHistory.length=0; financialHistory.push(0); drawFinancial();
-  document.getElementById('financial-ai-explanation').textContent='No active incident. Financial exposure is currently zero because affected services are operating normally.';
+  financialHistory.length = 0;
+  for(let i=0; i<12; i++){
+    financialHistory.push({ t: i, val: 0, phase: 'normal' });
+  }
+  sizeFinancial();
+  drawFinancial();
+  const ai = document.getElementById('financial-ai-explanation');
+  if(ai) ai.textContent = 'No active incident. Financial exposure is currently zero because affected services are operating normally.';
   updateOutageCost();
   updateServiceBreakdown();
   updateLossAvoided();
 }
-window.addEventListener('resize', sizeFinancial); sizeFinancial(); resetFinancialChart();
+window.addEventListener('resize', sizeFinancial);
+sizeFinancial();
+resetFinancialChart();
 
+/* ==================================================================
+   15. PREDICTIVE FAILURE CHART — ER-MUM-01 OPTICAL POWER
+   ================================================================== */
+const predCanvas = document.getElementById('predictive-chart');
+const predCtx = predCanvas.getContext('2d');
+const predHistory = [];
+
+function sizePred(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = predCanvas.clientWidth || predCanvas.parentElement?.clientWidth || 450;
+  const h = 110;
+  if(w > 0){
+    predCanvas.width = Math.round(w * dpr);
+    predCanvas.height = Math.round(h * dpr);
+    predCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+}
+
+function resetPredictiveChart(){
+  predHistory.length = 0;
+  const baselineValues = [-3.12, -3.10, -3.15, -3.11, -3.14, -3.12, -3.13, -3.11, -3.12, -3.13];
+  baselineValues.forEach((val, i) => {
+    predHistory.push({ t: `T-${(baselineValues.length - i) * 5}s`, dbm: val, stage: 'nominal' });
+  });
+  sizePred();
+  drawPredictive();
+  const cap = document.getElementById('predictive-caption');
+  if(cap) cap.textContent = 'Signal nominal (-3.1 dBm)';
+  const pai = document.getElementById('predictive-ai-explanation');
+  if(pai) pai.textContent = 'Optical power is nominal. The predictive model is monitoring for signal drift toward the failure threshold.';
+}
+
+function drawPredictive(){
+  const w = predCanvas.clientWidth || 450;
+  const h = 110;
+  if(w > 0 && predCanvas.width === 0){
+    sizePred();
+  }
+
+  predCtx.clearRect(0, 0, w, h);
+
+  const padL = 55, padR = 25, padT = 16, padB = 22;
+  const plotW = Math.max(10, w - padL - padR);
+  const plotH = Math.max(10, h - padT - padB);
+
+  // Y scale: -2.0 dBm (top) to -8.0 dBm (bottom)
+  const yMin = -8.0, yMax = -2.0;
+  const yOf = (dbm) => padT + ((dbm - yMax) / (yMin - yMax)) * plotH;
+  const pts = predHistory.length > 0 ? predHistory : [{ t: 'T0', dbm: -3.1, stage: 'nominal' }];
+  const xOf = (i) => padL + (pts.length <= 1 ? 0 : (i / (pts.length - 1)) * plotW);
+
+  // 1. Nominal Range Band (-2.0 to -3.5 dBm)
+  const yNomTop = yOf(-2.0);
+  const yNomBot = yOf(-3.5);
+  predCtx.fillStyle = 'rgba(63, 214, 196, 0.07)';
+  predCtx.fillRect(padL, yNomTop, plotW, yNomBot - yNomTop);
+
+  // 2. Threshold Horizontal Lines
+  const warnY = yOf(-4.5);
+  const failY = yOf(-6.0);
+
+  // Warning line (-4.5 dBm)
+  predCtx.save();
+  predCtx.setLineDash([4, 4]);
+  predCtx.strokeStyle = getCss('--amber') || '#f2a93b';
+  predCtx.lineWidth = 1.2;
+  predCtx.beginPath();
+  predCtx.moveTo(padL, warnY);
+  predCtx.lineTo(w - padR, warnY);
+  predCtx.stroke();
+
+  // Failure line (-6.0 dBm)
+  predCtx.strokeStyle = getCss('--crit') || '#ef5b5b';
+  predCtx.lineWidth = 1.5;
+  predCtx.beginPath();
+  predCtx.moveTo(padL, failY);
+  predCtx.lineTo(w - padR, failY);
+  predCtx.stroke();
+  predCtx.restore();
+
+  // Labels for threshold lines
+  predCtx.font = '700 8.5px ' + (getCss('--mono') || 'monospace');
+  predCtx.textAlign = 'right';
+  predCtx.fillStyle = getCss('--amber') || '#f2a93b';
+  predCtx.fillText('WARN -4.5 dBm', w - padR, warnY - 4);
+  predCtx.fillStyle = getCss('--crit') || '#ef5b5b';
+  predCtx.fillText('FAILURE THRESHOLD -6.0 dBm', w - padR, failY - 4);
+
+  // 3. Axes and Grid
+  predCtx.strokeStyle = getCss('--panel-line') || '#2d3748';
+  predCtx.lineWidth = 1;
+  const yTicks = [-2.0, -4.0, -6.0, -8.0];
+  predCtx.font = '600 9px ' + (getCss('--mono') || 'monospace');
+  predCtx.textAlign = 'right';
+  predCtx.textBaseline = 'middle';
+  predCtx.fillStyle = getCss('--ink-2') || '#9fb2c3';
+
+  yTicks.forEach(val => {
+    const y = yOf(val);
+    predCtx.beginPath();
+    predCtx.moveTo(padL, y);
+    predCtx.lineTo(w - padR, y);
+    predCtx.stroke();
+    predCtx.fillText(val.toFixed(1) + ' dBm', padL - 6, y);
+  });
+
+  // Time / Stage milestones at bottom
+  predCtx.textAlign = 'center';
+  predCtx.textBaseline = 'top';
+  predCtx.fillText('NORMAL', padL + 16, h - padB + 6);
+  if(pts.length > 12){
+    predCtx.fillText('DRIFT', padL + plotW * 0.35, h - padB + 6);
+    predCtx.fillText('THRESHOLD', padL + plotW * 0.60, h - padB + 6);
+    predCtx.fillText('RECOVERY', w - padR - 20, h - padB + 6);
+  } else {
+    predCtx.fillText('STABLE', padL + plotW * 0.5, h - padB + 6);
+    predCtx.fillText('MONITORING', w - padR - 20, h - padB + 6);
+  }
+
+  // 4. Data line
+  predCtx.lineWidth = 2.2;
+  predCtx.lineCap = 'round';
+  predCtx.lineJoin = 'round';
+
+  const okCol = getCss('--ok') || '#3fd6c4';
+  const amberCol = getCss('--amber') || '#f2a93b';
+  const critCol = getCss('--crit') || '#ef5b5b';
+
+  for(let i = 1; i < pts.length; i++){
+    const x1 = xOf(i - 1), y1 = yOf(pts[i - 1].dbm);
+    const x2 = xOf(i), y2 = yOf(pts[i].dbm);
+    predCtx.beginPath();
+    predCtx.moveTo(x1, y1);
+    predCtx.lineTo(x2, y2);
+
+    const val = pts[i].dbm;
+    if(pts[i].stage === 'recovery'){
+      predCtx.strokeStyle = okCol;
+    } else if(val <= -6.0){
+      predCtx.strokeStyle = critCol;
+    } else if(val <= -4.5){
+      predCtx.strokeStyle = amberCol;
+    } else {
+      predCtx.strokeStyle = okCol;
+    }
+    predCtx.stroke();
+  }
+
+  // Milestone marker dots
+  pts.forEach((p, i) => {
+    const x = xOf(i), y = yOf(p.dbm);
+    if(p.isFailureMarker){
+      predCtx.beginPath();
+      predCtx.arc(x, y, 4.5, 0, Math.PI * 2);
+      predCtx.fillStyle = critCol;
+      predCtx.fill();
+      predCtx.lineWidth = 1.5;
+      predCtx.strokeStyle = '#fff';
+      predCtx.stroke();
+      predCtx.font = '700 8.5px ' + (getCss('--mono') || 'monospace');
+      predCtx.fillStyle = critCol;
+      predCtx.textAlign = 'center';
+      predCtx.fillText('● FAILURE (' + p.dbm.toFixed(1) + ')', x, y + 10);
+    } else if(p.isRecoveryMarker){
+      predCtx.beginPath();
+      predCtx.arc(x, y, 4.5, 0, Math.PI * 2);
+      predCtx.fillStyle = okCol;
+      predCtx.fill();
+      predCtx.lineWidth = 1.5;
+      predCtx.strokeStyle = '#fff';
+      predCtx.stroke();
+      predCtx.font = '700 8.5px ' + (getCss('--mono') || 'monospace');
+      predCtx.fillStyle = okCol;
+      predCtx.textAlign = 'center';
+      predCtx.fillText('● RESTORED (' + p.dbm.toFixed(1) + ')', x, y - 12);
+    }
+  });
+
+  // Current latest marker
+  const lastI = pts.length - 1;
+  const lastX = xOf(lastI);
+  const lastY = yOf(pts[lastI].dbm);
+  predCtx.beginPath();
+  predCtx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+  const lastVal = pts[lastI].dbm;
+  predCtx.fillStyle = lastVal <= -6.0 ? critCol : (lastVal <= -4.5 ? amberCol : okCol);
+  predCtx.fill();
+}
+window.addEventListener('resize', sizePred);
+sizePred();
+resetPredictiveChart();
+
+// Periodic interval to keep hidden-to-visible canvases sized and metrics fresh
 setInterval(()=>{
   if(!SIM.frozen){
     updateFinancialTicker(500);
@@ -2160,34 +2482,16 @@ setInterval(()=>{
   updateOutageCost();
   updateServiceBreakdown();
   updateLossAvoided();
-}, 500);
- 
-/* ==================================================================
-   15. PREDICTIVE FAILURE CHART
-   ================================================================== */
-const predCanvas = document.getElementById('predictive-chart');
-const predCtx = predCanvas.getContext('2d');
-function sizePred(){
-  const dpr=Math.min(window.devicePixelRatio||1,2);
-  predCanvas.width = predCanvas.clientWidth*dpr; predCanvas.height=60*dpr;
-  predCtx.setTransform(dpr,0,0,dpr,0,0);
-}
-window.addEventListener('resize', sizePred); sizePred();
-function drawPredictive(progress){
-  const w=predCanvas.clientWidth,h=60;
-  predCtx.clearRect(0,0,w,h);
-  predCtx.beginPath();
-  const n=40;
-  for(let i=0;i<=n;i++){
-    const x = w*(i/n);
-    const decline = Math.max(0, (i/n - (1-progress*1.3)));
-    const y = h*0.25 + decline*h*1.6 + Math.sin(i*0.7)*1.5;
-    if(i===0) predCtx.moveTo(x,y); else predCtx.lineTo(x,y);
+
+  if(financialCanvas.clientWidth > 0 && financialCanvas.width !== Math.round(financialCanvas.clientWidth * (window.devicePixelRatio||1))){
+    sizeFinancial();
+    drawFinancial();
   }
-  predCtx.strokeStyle = getCss(progress>0.5?'--amber':'--fiber');
-  predCtx.lineWidth=1.6; predCtx.stroke();
-}
-drawPredictive(0);
+  if(predCanvas.clientWidth > 0 && predCanvas.width !== Math.round(predCanvas.clientWidth * (window.devicePixelRatio||1))){
+    sizePred();
+    drawPredictive();
+  }
+}, 500);
  
 /* ==================================================================
    16. MTTR VISUAL
@@ -2387,18 +2691,41 @@ function runSimulation(){
     map.flyTo(coordOf('ER-MUM-01'), 13, {duration: REDUCED_MOTION?0:1.2});
   }, 900 + cascade.length*380 + 1600);
  
-  // predictive chart animates alongside
-  let predT=0;
-  const predTimer = setInterval(()=>{
-    predT += 0.06; drawPredictive(Math.min(1,predT));
-    document.getElementById('predictive-caption').textContent = predT<1 ? 'Optical power drifting on ER-MUM-01 uplink' : 'Failure threshold crossed — matches incident timeline';
-    const pai=document.getElementById('predictive-ai-explanation');
-    if(pai) pai.textContent = predT<1
-      ? 'Optical power is drifting away from nominal. This is an early-warning signal that precedes the observed uplink failure.'
-      : 'The optical signal crossed the warning threshold, matching the incident timeline and strengthening the predictive-failure evidence.';
-    if(predT>=1) clearInterval(predTimer);
-  }, 200);
- 
+  // predictive chart animates along incident timeline
+  const degradationSteps = [
+    { delay: 300, dbm: -3.35, stage: 'drift', caption: 'Optical power drifting on ER-MUM-01 uplink (-3.4 dBm)',
+      explain: 'Optical power is deteriorating toward the warning threshold. The degradation aligns with the incident timeline and increases the probability of an uplink failure.' },
+    { delay: 900, dbm: -3.80, stage: 'drift', caption: 'Optical power drifting on ER-MUM-01 uplink (-3.8 dBm)',
+      explain: 'Optical power is deteriorating toward the warning threshold. The degradation aligns with the incident timeline and increases the probability of an uplink failure.' },
+    { delay: 1500, dbm: -4.30, stage: 'drift', caption: 'Optical power nearing warning threshold (-4.3 dBm)',
+      explain: 'Optical power is deteriorating toward the warning threshold. The degradation aligns with the incident timeline and increases the probability of an uplink failure.' },
+    { delay: 2100, dbm: -4.85, stage: 'warning', caption: 'WARNING threshold crossed (-4.9 dBm) — pre-fault signature',
+      explain: 'Optical power is deteriorating toward the warning threshold. The degradation aligns with the incident timeline and increases the probability of an uplink failure.' },
+    { delay: 2700, dbm: -5.50, stage: 'warning', caption: 'Signal attenuation accelerating on ER-MUM-01 (-5.5 dBm)',
+      explain: 'Optical power is deteriorating toward the warning threshold. The degradation aligns with the incident timeline and increases the probability of an uplink failure.' },
+    { delay: 3300, dbm: -6.40, stage: 'failure', isFailureMarker: true, caption: 'Failure threshold crossed (-6.4 dBm) — ER-MUM-01 uplink cut',
+      explain: 'Optical power crossed the failure threshold and aligns temporally with the ER-MUM-01 uplink incident, strengthening the root-cause evidence.' },
+    { delay: 3900, dbm: -6.80, stage: 'failure', caption: 'Critical failure sustained (-6.8 dBm)',
+      explain: 'Optical power crossed the failure threshold and aligns temporally with the ER-MUM-01 uplink incident, strengthening the root-cause evidence.' }
+  ];
+
+  degradationSteps.forEach(step => {
+    setTimeout(() => {
+      if (SIM.phase === 'normal') return;
+      predHistory.push({
+        t: `T+${Math.round(step.delay/1000)}s`,
+        dbm: step.dbm,
+        stage: step.stage,
+        isFailureMarker: !!step.isFailureMarker
+      });
+      drawPredictive();
+      const cap = document.getElementById('predictive-caption');
+      if (cap) cap.textContent = step.caption;
+      const pai = document.getElementById('predictive-ai-explanation');
+      if (pai) pai.textContent = step.explain;
+    }, step.delay);
+  });
+
   // STAGE 4: rerouting
   const t4 = 900 + cascade.length*380 + 2800;
   setTimeout(()=>{
@@ -2406,7 +2733,7 @@ function runSimulation(){
     logEvent('ALTERNATE ROUTE VIA CR-MUM-02 ACTIVATED','warn');
     setNodeStatus('CR-MUM-02','recovering');
   }, t4);
- 
+
   // STAGE 5: runbook
   const t5 = t4 + 1400;
   setTimeout(()=>{
@@ -2415,7 +2742,7 @@ function runSimulation(){
     advanceTimeline(5);
   }, t5);
 }
- 
+
 function beginRecovery(){
   logEvent('RECOVERY WAVE INITIATED FROM ER-MUM-01','ok');
   advanceTimeline(6);
@@ -2428,6 +2755,32 @@ function beginRecovery(){
       body: JSON.stringify({incident_id: 'INC-MUM-FIB-01', action_id: 'RB-ACT-001', is_tier1: true})
     }).catch(()=>{});
   } catch(e){}
+
+  // Optical power recovery sequence toward nominal
+  const recoveryOpticalSteps = [
+    { delay: 600, dbm: -5.20, stage: 'recovery', caption: 'Remediation initiated — optical signal recovering (-5.2 dBm)' },
+    { delay: 1400, dbm: -4.20, stage: 'recovery', caption: 'Alternate path verified — attenuation dropping (-4.2 dBm)' },
+    { delay: 2200, dbm: -3.50, stage: 'recovery', caption: 'Optical signal stabilizing in nominal band (-3.5 dBm)' },
+    { delay: 3000, dbm: -3.10, stage: 'recovery', isRecoveryMarker: true, caption: 'Signal restored to nominal (-3.1 dBm)' }
+  ];
+
+  recoveryOpticalSteps.forEach(step => {
+    setTimeout(() => {
+      predHistory.push({
+        t: `+${Math.round(step.delay/1000)}s`,
+        dbm: step.dbm,
+        stage: step.stage,
+        isRecoveryMarker: !!step.isRecoveryMarker
+      });
+      drawPredictive();
+      const cap = document.getElementById('predictive-caption');
+      if (cap) cap.textContent = step.caption;
+      if (step.isRecoveryMarker) {
+        const pai = document.getElementById('predictive-ai-explanation');
+        if (pai) pai.textContent = 'Optical power has returned to the nominal range following remediation, confirming recovery of the affected uplink.';
+      }
+    }, step.delay);
+  });
 
   const order = ['FIB-MUM-A','CR-MUM-01','CS-MUM-01','CS-MUM-02','ER-MUM-01','BSC-MUM-01','BTS-MUM-014','DNS-SVC','AUTH-SVC','CUST-RETAIL','CR-MUM-02'];
   order.forEach((id,i)=>{
@@ -2443,10 +2796,10 @@ function beginRecovery(){
     advanceTimeline(7);
     SIM.financialRate = 0;
     freezeFinancial();
+    drawFinancial();
+    updateOutageCost();
     document.getElementById('impact-sub').textContent = 'Incident resolved — impact stopped';
     document.getElementById('financial-ai-explanation').textContent = `AI assessment: the outage has been contained and financial exposure has stopped accumulating. Final estimated impact: ₹${Math.round(SIM.financialTotal).toLocaleString('en-IN')}.`;
-    document.getElementById('predictive-caption').textContent = 'Signal restored to nominal';
-    drawPredictive(0);
     resetBtn.style.display='inline-block';
     map.flyTo([19.09,72.90], 10, {duration: REDUCED_MOTION?0:1.4});
   }, order.length*260 + 1200);
@@ -2454,6 +2807,14 @@ function beginRecovery(){
  
 simBtn.addEventListener('click', runSimulation);
 resetBtn.addEventListener('click', ()=>{
+  SIM.phase = 'normal';
+  SIM.financialTotal = 0;
+  SIM.financialRate = 0;
+  SIM.peakRate = 0;
+  SIM.frozen = true;
+  resetFinancialChart();
+  resetPredictiveChart();
+  updateNetworkStatusPills();
   try {
     fetch('http://localhost:8000/api/scenarios/reset', {method:'POST'}).catch(()=>{});
   } catch(e){}
