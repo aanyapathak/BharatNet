@@ -1,21 +1,28 @@
-BharatNet AIOps NOC Commander
+# BharatNet AIOps NOC Commander
 
-Topology-Aware Network Operations Intelligence for Telecom Incident Response
+### Topology-Aware Network Operations Intelligence for Telecom Incident Response
 
-BharatNet AIOps NOC Commander is a telecom AIOps platform designed to transform large volumes of network alerts into explainable incidents. It combines alert normalization, noise reduction, temporal and topology-aware correlation, root-cause analysis, blast-radius analysis, business-impact estimation, escalation, runbooks, remediation and recovery verification.
+**BharatNet AIOps NOC Commander** is a telecom AIOps platform designed to transform large volumes of network alerts into explainable incidents. It combines alert normalization, noise reduction, temporal and topology-aware correlation, root-cause analysis, blast-radius analysis, business-impact estimation, escalation, runbooks, remediation, and recovery verification.
 
-Thousands of network alerts should become one explainable incident.
+> **Thousands of network alerts should become one explainable incident.**
 
-Status: Prototype / Hackathon Demonstration
-Domain: Telecom AIOps / Network Operations
-Core Focus: Alert Correlation, Root Cause, Blast Radius, Business Impact, Runbooks
+| | |
+|---|---|
+| **Status** | Prototype / Hackathon Demonstration |
+| **Domain** | Telecom AIOps / Network Operations |
+| **Core Focus** | Alert Correlation, Root Cause, Blast Radius, Business Impact, Runbooks |
 
-Overview
+---
 
-A single telecom failure can generate hundreds or thousands of downstream alerts. BharatNet focuses on identifying the event that actually matters instead of treating every symptom as an independent failure.
+## Overview
 
-Core Pipeline
+A single telecom failure can generate hundreds or thousands of downstream alerts. **BharatNet focuses on identifying the event that actually matters** instead of treating every symptom as an independent failure.
 
+---
+
+## Core Pipeline
+
+```
 Telemetry
    ↓
 Alert Normalization
@@ -39,9 +46,13 @@ Controlled Remediation
 Recovery Verification
    ↓
 Operator Explanation
+```
 
-Architecture
+---
 
+## Architecture
+
+```
                     NETWORK TELEMETRY
                            |
                            v
@@ -102,41 +113,35 @@ Architecture
                   +------------------+
                   | AI Explanation   |
                   +------------------+
+```
 
-Key Features
+---
 
-Alert Intelligence
+## Key Features
 
-Alert normalization
+### Alert Intelligence
+- **Alert normalization**
+- **Duplicate detection**
+- **Flapping suppression**
+- **Temporal correlation**
+- **Topology-aware correlation**
+- **Incident grouping**
 
-Duplicate detection
+### Root Cause Analysis
 
-Flapping suppression
+The network is modeled as a **directed NetworkX graph**. The engine combines:
 
-Temporal correlation
-
-Topology-aware correlation
-
-Incident grouping
-
-Root Cause Analysis
-
-The network is modeled as a directed NetworkX graph. The engine combines:
-
-Alert type
-
-Device hierarchy
-
-Topological position
-
-Upstream/downstream dependencies
-
-Time relationships
+- Alert type
+- Device hierarchy
+- Topological position
+- Upstream/downstream dependencies
+- Time relationships
 
 This allows multiple downstream symptoms to be associated with a probable upstream failure.
 
-Example:
+**Example:**
 
+```
 LINK DOWN
    +
 OSPF LOST
@@ -148,11 +153,13 @@ PACKET LOSS
 TOPOLOGY DEPENDENCY
    =
 UPSTREAM FAILURE
+```
 
-Blast Radius
+### Blast Radius
 
 Graph traversal identifies downstream devices and services affected by a probable root cause.
 
+```
 Root Device
     ↓
 Core
@@ -164,113 +171,75 @@ Access
 Services
     ↓
 Customers
+```
 
-Business Impact
+### Business Impact
 
 The dashboard provides modelled operational exposure such as:
 
-Impact per second
+- Impact per second
+- Impact per minute
+- Impact over time
+- Affected services
+- Estimated loss
+- Estimated loss avoided through faster recovery
 
-Impact per minute
+> **Note:** Financial values in the prototype are demonstration/modelled values and are not claimed to represent actual operator revenue.
 
-Impact over time
+### Escalation and Runbooks
 
-Affected services
-
-Estimated loss
-
-Estimated loss avoided through faster recovery
-
-Financial values in the prototype are demonstration/modelled values and are not claimed to represent actual operator revenue.
-
-Escalation and Runbooks
-
-Incidents are evaluated against predefined escalation policies and matched with operational runbooks.
+Incidents are evaluated against predefined **escalation policies** and matched with operational **runbooks**.
 
 Runbooks contain:
 
-Runbook ID
+- Runbook ID
+- Category
+- Match confidence
+- Recommended actions
+- Estimated resolution time
+- Verification command
 
-Category
-
-Match confidence
-
-Recommended actions
-
-Estimated resolution time
-
-Verification command
-
-Recovery Verification
+### Recovery Verification
 
 Recovery follows the operational state:
 
-CRITICAL → DEGRADED → HEALTHY
+**`CRITICAL → DEGRADED → HEALTHY`**
 
-The incident is not considered fully recovered simply because a remediation action was triggered.
+The incident is **not** considered fully recovered simply because a remediation action was triggered.
 
-AI and Gemini
+---
+
+## AI and Gemini
 
 BharatNet follows the principle:
 
-Deterministic where reliability matters. AI where intelligence adds value.
+> **Deterministic where reliability matters. AI where intelligence adds value.**
 
 Critical network reasoning is deterministic in the current prototype:
 
-Function
+| Function | Approach |
+|---|---|
+| Alert processing | Rule-based |
+| Noise reduction | Deterministic |
+| Correlation | Temporal + topology |
+| Network model | NetworkX graph |
+| Root cause | Graph + heuristic rules |
+| Blast radius | Graph traversal |
+| Severity | Rule-based |
+| Escalation | Policy-based |
+| Runbooks | Rule-based |
+| Remediation control | Controlled workflow |
+| Explanation | Gemini/LLM architecture |
 
-Approach
+**Current prototype status:** the project does not make a live Gemini API request. The explanation layer is currently represented through structured application logic. A production Gemini integration can consume the deterministic incident state without receiving unrestricted network control.
 
-Alert processing
+---
 
-Rule-based
+## Safety Model
 
-Noise reduction
+> **AI should not have unrestricted access to network operations.**
 
-Deterministic
-
-Correlation
-
-Temporal + topology
-
-Network model
-
-NetworkX graph
-
-Root cause
-
-Graph + heuristic rules
-
-Blast radius
-
-Graph traversal
-
-Severity
-
-Rule-based
-
-Escalation
-
-Policy-based
-
-Runbooks
-
-Rule-based
-
-Remediation control
-
-Controlled workflow
-
-Explanation
-
-Gemini/LLM architecture
-
-Current prototype status: the project does not make a live Gemini API request. The explanation layer is currently represented through structured application logic. A production Gemini integration can consume the deterministic incident state without receiving unrestricted network control.
-
-Safety Model
-
-AI should not have unrestricted access to network operations.
-
+```
                 AI / Gemini
                     |
                     v
@@ -282,87 +251,66 @@ AI should not have unrestricted access to network operations.
              v            v
        Safe Action    High-Risk Action
           Execute       Approval
+```
 
-Network-changing actions should remain behind authorization, validation, allowlists and engineer approval.
+Network-changing actions should remain behind **authorization, validation, allowlists, and engineer approval**.
 
-Real vs Simulated Data
+---
+
+## Real vs Simulated Data
 
 The prototype deliberately separates public data from simulated operational data.
 
-Simulated
+### Simulated
+- Network topology
+- Incident telemetry
+- Alert storms
+- Subscriber impact
+- Business exposure
+- Financial impact
+- Recovery scenarios
 
-Network topology
+### Public / External
+The project can use public environmental information for Mumbai and references publicly available Indian telecom performance data such as **TRAI reports**.
 
-Incident telemetry
+> Public telecom reports are treated as reference/baseline data, **not** as live private operator telemetry. This distinction is important because real telecom OSS/BSS telemetry and network topology are generally proprietary.
 
-Alert storms
+---
 
-Subscriber impact
+## Technology Stack
 
-Business exposure
+### Frontend
+- React
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Lucide React
+- Recharts
 
-Financial impact
+### Backend
+- Python
+- FastAPI
+- Pydantic
+- NetworkX
+- REST APIs
+- WebSockets
 
-Recovery scenarios
+### Visualization
+- SVG / Canvas
+- Recharts
+- Leaflet
+- OpenStreetMap-based map tiles
 
-Public / External
+### Data
+- JSON configuration files
+- In-memory application state
+- Simulated network state
 
-The project can use public environmental information for Mumbai and references publicly available Indian telecom performance data such as TRAI reports.
+---
 
-Public telecom reports are treated as reference/baseline data, not as live private operator telemetry.
+## Project Structure
 
-This distinction is important because real telecom OSS/BSS telemetry and network topology are generally proprietary.
-
-Technology Stack
-
-Frontend
-
-React
-
-Vite
-
-Tailwind CSS
-
-Framer Motion
-
-Lucide React
-
-Recharts
-
-Backend
-
-Python
-
-FastAPI
-
-Pydantic
-
-NetworkX
-
-REST APIs
-
-WebSockets
-
-Visualization
-
-SVG / Canvas
-
-Recharts
-
-Leaflet
-
-OpenStreetMap-based map tiles
-
-Data
-
-JSON configuration files
-
-In-memory application state
-
-Simulated network state
-
-Project Structure
-
+```
 BharatNet/
 ├── backend/
 │   ├── data/
@@ -392,58 +340,61 @@ BharatNet/
 │   └── package.json
 │
 └── README.md
+```
 
-Running Locally
+---
 
-Requirements
+## Running Locally
 
-Python 3.10+
+### Requirements
+- Python 3.10+
+- Node.js 18+
+- npm
 
-Node.js 18+
+### Backend
 
-npm
-
-Backend
-
+```bash
 cd backend
 pip install -r requirements.txt
 python main.py
+```
 
-Frontend
+### Frontend
 
 Open another terminal:
 
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
 Open the local URL provided by Vite.
 
-Demo: Mumbai Fiber Cut
+---
+
+## Demo: Mumbai Fiber Cut
 
 The primary demonstration simulates an upstream Mumbai network failure.
 
-Normal State
-
+**Normal State**
 The network operates normally with background telemetry.
 
-Failure
+**Failure**
+An upstream element such as `ER-MUM-01` experiences an uplink/fiber-related failure.
 
-An upstream element such as ER-MUM-01 experiences an uplink/fiber-related failure.
-
-Alert Storm
-
+**Alert Storm**
 The failure produces symptoms such as:
+- `LINK DOWN`
+- `OSPF LOSS`
+- `BGP DROP`
+- `PACKET LOSS`
+- `INTERFACE FLAPPING`
+- `SERVICE TIMEOUT`
 
-LINK DOWN
-OSPF LOSS
-BGP DROP
-PACKET LOSS
-INTERFACE FLAPPING
-SERVICE TIMEOUT
+**Correlation**
 
-Correlation
-
+```
 1000+ Alerts
       ↓
 Noise Reduction
@@ -451,79 +402,47 @@ Noise Reduction
 Correlation
       ↓
 One Incident
+```
 
-Root Cause
-
+**Root Cause**
 The system identifies a probable upstream failure and presents supporting evidence.
 
-Blast Radius
-
+**Blast Radius**
 The topology graph determines affected downstream network elements and services.
 
-Business Impact
-
+**Business Impact**
 The dashboard estimates modelled financial exposure while the incident remains active.
 
-Recovery
-
+**Recovery**
 The runbook workflow moves the network toward recovery and verifies the resulting state.
 
-API
+---
 
-Endpoint
+## API
 
-Purpose
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/topology` | Network topology |
+| `GET /api/services` | Service definitions |
+| `GET /api/incidents` | Current incidents |
+| `GET /api/metrics` | Operational metrics |
+| `POST /api/scenarios/fiber-cut` | Start fiber-cut simulation |
+| `POST /api/scenarios/predictive` | Trigger predictive scenario |
+| `POST /api/scenarios/reset` | Reset network state |
+| `POST /api/runbook/execute` | Execute runbook action |
+| `POST /api/incidents/acknowledge` | Acknowledge incident |
+| `POST /api/feedback` | Submit feedback |
+| `WS /ws/telemetry` | Real-time telemetry updates |
 
-GET /api/topology
+---
 
-Network topology
+## Why BharatNet?
 
-GET /api/services
-
-Service definitions
-
-GET /api/incidents
-
-Current incidents
-
-GET /api/metrics
-
-Operational metrics
-
-POST /api/scenarios/fiber-cut
-
-Start fiber-cut simulation
-
-POST /api/scenarios/predictive
-
-Trigger predictive scenario
-
-POST /api/scenarios/reset
-
-Reset network state
-
-POST /api/runbook/execute
-
-Execute runbook action
-
-POST /api/incidents/acknowledge
-
-Acknowledge incident
-
-POST /api/feedback
-
-Submit feedback
-
-WS /ws/telemetry
-
-Real-time telemetry updates
-
-Why BharatNet?
-
-Traditional monitoring systems are excellent at detecting events, but an NOC engineer still needs to determine how those events relate to each other.
+Traditional monitoring systems are excellent at **detecting** events, but an NOC engineer still needs to determine **how those events relate to each other**.
 
 BharatNet focuses on the transition:
 
+```
 Alert Monitoring
        ↓
 Incident Intelligence
@@ -535,75 +454,58 @@ Impact
 Action
        ↓
 Recovery
+```
 
-The key differentiators are:
+**Key differentiators:**
 
-Incident-centric operations rather than alert-centric monitoring.
+- **Incident-centric** operations rather than alert-centric monitoring
+- **Topology-aware correlation** using a network dependency graph
+- **Explainable root-cause reasoning** with supporting evidence
+- **Business-aware impact analysis**
+- **Controlled remediation** instead of unrestricted AI actions
 
-Topology-aware correlation using a network dependency graph.
+---
 
-Explainable root-cause reasoning with supporting evidence.
-
-Business-aware impact analysis.
-
-Controlled remediation instead of unrestricted AI actions.
-
-Current Limitations
+## Current Limitations
 
 This is a prototype / hackathon implementation.
 
-Network telemetry is simulated.
+- Network telemetry is simulated
+- Topology is demonstration data
+- Financial impact is modelled
+- Subscriber impact is estimated
+- Gemini is not currently invoked through a live API
+- Public telecom data is a reference source rather than private live telemetry
+- Current state is primarily JSON/in-memory rather than a production telemetry database
+- Production authentication, authorization, audit logging, tenant isolation, and hardened infrastructure require further implementation
 
-Topology is demonstration data.
+---
 
-Financial impact is modelled.
-
-Subscriber impact is estimated.
-
-Gemini is not currently invoked through a live API.
-
-Public telecom data is a reference source rather than private live telemetry.
-
-Current state is primarily JSON/in-memory rather than a production telemetry database.
-
-Production authentication, authorization, audit logging, tenant isolation and hardened infrastructure require further implementation.
-
-Future Scope
+## Future Scope
 
 Potential production extensions include:
 
-SNMP / Syslog / NetFlow integration
+- SNMP / Syslog / NetFlow integration
+- Streaming telemetry and gNMI
+- Kafka-based event pipelines
+- Live OSS/BSS integration
+- Real operator topology
+- Anomaly detection
+- Failure prediction
+- Time-series forecasting
+- Probabilistic root-cause ranking
+- Production database and observability
+- RBAC and multi-tenant deployment
+- SSO and audit logging
+- Production Gemini integration
+- Kubernetes-based deployment
 
-Streaming telemetry and gNMI
+---
 
-Kafka-based event pipelines
+## Project Status
 
-Live OSS/BSS integration
+**Prototype / Hackathon Demonstration**
 
-Real operator topology
+BharatNet demonstrates an end-to-end topology-aware AIOps workflow for telecom incident intelligence using controlled simulation, deterministic reasoning, operational runbooks, business-impact modelling, and an AI explanation architecture.
 
-Anomaly detection
-
-Failure prediction
-
-Time-series forecasting
-
-Probabilistic root-cause ranking
-
-Production database and observability
-
-RBAC and multi-tenant deployment
-
-SSO and audit logging
-
-Production Gemini integration
-
-Kubernetes-based deployment
-
-Project Status
-
-Prototype / Hackathon Demonstration
-
-BharatNet demonstrates an end-to-end topology-aware AIOps workflow for telecom incident intelligence using controlled simulation, deterministic reasoning, operational runbooks, business-impact modelling and an AI explanation architecture.
-
-Observe. Correlate. Reason. Act. Verify. Explain.
+> **Observe. Correlate. Reason. Act. Verify. Explain.**
