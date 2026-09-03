@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BharatNet — AIOps NOC Commander</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <style>
 /* ============================================================
@@ -165,6 +166,33 @@ button{font-family:inherit; cursor:pointer;}
   color:var(--ink-1); transition:border-color .2s ease;
 }
 .theme-toggle:hover{ border-color:var(--fiber); }
+
+.mode-toggle {
+  display: flex;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-left: 1.5em;
+}
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.5em 1em;
+  transition: all 0.25s ease;
+}
+.mode-btn.active {
+  background: var(--fiber);
+  color: var(--bg-0);
+}
+.mode-btn:hover:not(.active) {
+  color: var(--fiber);
+}
  
 /* command strip */
 #command-strip{
@@ -377,6 +405,19 @@ button{font-family:inherit; cursor:pointer;}
 .noc-tooltip .t-row{ display:flex; justify-content:space-between; gap:1.2em; }
 .noc-tooltip .t-row b{ color:var(--ink-0); font-family:var(--mono); font-weight:500; }
 .leaflet-tooltip-top.noc-tooltip::before{ border-top-color:var(--panel-line) !important; }
+
+.leaflet-popup.noc-popup .leaflet-popup-content-wrapper {
+  background: var(--panel-line);
+  color: var(--ink-0);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+.leaflet-popup.noc-popup .leaflet-popup-tip {
+  background: var(--panel-line);
+}
+.leaflet-popup.noc-popup .leaflet-popup-close-button {
+  color: var(--ink-1);
+}
  
 /* Gateway city label (LAX / LON / SIN etc.) */
 .gw-label-icon{ font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:.05em; white-space:nowrap; text-shadow:0 0 4px var(--bg-0),0 0 4px var(--bg-0); }
@@ -783,6 +824,10 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
     <div class="topbar-left">
       <span class="brand-mini"><b>BharatNet</b> NOC</span>
       <span class="systime" id="systime">20:41:08 IST</span>
+      <div class="mode-toggle">
+        <button class="mode-btn" data-mode="realdata" id="mode-real-data">REAL INDIA DATA</button>
+        <button class="mode-btn active" data-mode="simulation" id="mode-simulation">INCIDENT SIMULATION</button>
+      </div>
     </div>
     <div class="topbar-right">
       <span class="pill" id="net-health-pill">NETWORK HEALTHY</span>
@@ -806,9 +851,12 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
     <button class="layer-chip active" data-layer="all">FULL TOPOLOGY</button>
     <button class="layer-chip" data-layer="network">NETWORK</button>
     <button class="layer-chip" data-layer="customer">CUSTOMER IMPACT</button>
-    <button class="layer-chip feature-chip" data-feature="financial">FINANCIAL IMPACT</button>
+    <button class="layer-chip feature-chip" data-feature="financial">ESTIMATED BUSINESS EXPOSURE</button>
     <button class="layer-chip feature-chip" data-feature="predictive">PREDICTIVE / MTTR</button>
-    <button class="layer-chip feature-chip" data-feature="health">NETWORK HEALTH</button>
+    <button class="layer-chip feature-chip" data-feature="health">BUSINESS BLAST RADIUS</button>
+    <button class="layer-chip feature-chip" data-feature="realworld">REAL WORLD</button>
+    <button class="layer-chip feature-chip" data-feature="companies">COMPANIES</button>
+    <button class="layer-chip feature-chip" data-feature="users">USERS</button>
   </div>
  
   <div class="sim-toolbar">
@@ -903,15 +951,15 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
           <span class="metric-label">MTTR — MANUAL vs AI-ASSISTED</span>
           <div class="mttr-row"><span class="mttr-label">MANUAL</span><div class="mttr-bar-track"><div class="mttr-bar-fill manual" id="mttr-manual"></div></div><span class="mttr-val" id="mttr-manual-val">—</span></div>
           <div class="mttr-row"><span class="mttr-label">AI-ASSISTED</span><div class="mttr-bar-track"><div class="mttr-bar-fill ai" id="mttr-ai"></div></div><span class="mttr-val" id="mttr-ai-val">—</span></div>
-          <div class="mttr-proof" id="mttr-proof">AI-assisted recovery is expected to reduce time-to-repair once the incident is correlated.</div>
-        </div>
-      </div>
-      <div class="health-ai"><span class="health-ai-badge">GEMINI EXPLANATION</span><p id="predictive-ai-explanation">Optical power is nominal. The predictive model is watching for drift toward the failure threshold.</p></div>
-    </section>
+    <div class="mttr-proof" id="mttr-proof">AI-assisted recovery is expected to reduce time-to-repair once the incident is correlated.</div>
+  </div>
+</div>
+<div class="health-ai"><span class="health-ai-badge">AI EXPLANATION</span><p id="predictive-ai-explanation">Optical power is nominal. The predictive model is watching for drift toward the failure threshold.</p></div>
+</section>
  
     <section class="feature-panel" data-feature-panel="health">
       <div class="feature-head">
-        <div><span class="eyebrow">PROPAGATION INTELLIGENCE</span><h2>NETWORK HEALTH</h2></div>
+        <div><span class="eyebrow">PROPAGATION INTELLIGENCE</span><h2>BUSINESS BLAST RADIUS</h2></div>
         <span class="feature-status" id="health-feature-status">ALL SYSTEMS NOMINAL</span>
       </div>
  
@@ -928,7 +976,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
  
         <div class="health-flow" id="health-ladder">
           <div class="health-row health-physical">
-            <div class="health-row-title"><span class="health-index">01</span><span>PHYSICAL</span></div>
+            <div class="health-row-title"><span class="health-index">01</span><span>NETWORK FAILURE</span></div>
             <div class="health-track"><div class="health-fill"></div></div>
             <div class="health-row-state"><i class="health-dot"></i><b id="health-physical-state">HEALTHY</b></div>
             <div class="health-score" id="health-physical-score">100% nominal</div>
@@ -937,7 +985,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
           <div class="health-arrow">↓</div>
  
           <div class="health-row health-network">
-            <div class="health-row-title"><span class="health-index">02</span><span>NETWORK</span></div>
+            <div class="health-row-title"><span class="health-index">02</span><span>NODES</span></div>
             <div class="health-track"><div class="health-fill"></div></div>
             <div class="health-row-state"><i class="health-dot"></i><b id="health-network-state">HEALTHY</b></div>
             <div class="health-score" id="health-network-score">100% nominal</div>
@@ -946,7 +994,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
           <div class="health-arrow">↓</div>
  
           <div class="health-row health-access">
-            <div class="health-row-title"><span class="health-index">03</span><span>ACCESS / RAN</span></div>
+            <div class="health-row-title"><span class="health-index">03</span><span>REGIONS</span></div>
             <div class="health-track"><div class="health-fill"></div></div>
             <div class="health-row-state"><i class="health-dot"></i><b id="health-access-state">HEALTHY</b></div>
             <div class="health-score" id="health-access-score">100% nominal</div>
@@ -955,7 +1003,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
           <div class="health-arrow">↓</div>
  
           <div class="health-row health-service">
-            <div class="health-row-title"><span class="health-index">04</span><span>SERVICES</span></div>
+            <div class="health-row-title"><span class="health-index">04</span><span>SUBSCRIBERS</span></div>
             <div class="health-track"><div class="health-fill"></div></div>
             <div class="health-row-state"><i class="health-dot"></i><b id="health-service-state">HEALTHY</b></div>
             <div class="health-score" id="health-service-score">100% nominal</div>
@@ -964,10 +1012,19 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
           <div class="health-arrow">↓</div>
  
           <div class="health-row health-customer">
-            <div class="health-row-title"><span class="health-index">05</span><span>CUSTOMER IMPACT</span></div>
+            <div class="health-row-title"><span class="health-index">05</span><span>ENTERPRISE</span></div>
             <div class="health-track"><div class="health-fill"></div></div>
             <div class="health-row-state"><i class="health-dot"></i><b id="health-customer-state">HEALTHY</b></div>
             <div class="health-score" id="health-customer-score">100% nominal</div>
+          </div>
+
+          <div class="health-arrow">↓</div>
+
+          <div class="health-row health-exposure">
+            <div class="health-row-title"><span class="health-index">06</span><span>ESTIMATED EXPOSURE</span></div>
+            <div class="health-track"><div class="health-fill" id="health-exposure-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot" id="health-exposure-dot"></i><b id="health-exposure-state">HEALTHY</b></div>
+            <div class="health-score" id="health-exposure-score">100% nominal</div>
           </div>
         </div>
  
@@ -978,8 +1035,171 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
       </div>
  
       <div class="health-ai">
-        <span class="health-ai-badge">GEMINI EXPLANATION</span>
+        <span class="health-ai-badge">AI EXPLANATION</span>
         <p id="health-ai-explanation">No active incident. All monitored layers are operating within normal conditions.</p>
+      </div>
+    </section>
+
+    <section class="feature-panel" data-feature-panel="realworld">
+      <div class="feature-head">
+        <div><span class="eyebrow">ENVIRONMENTAL & INFRASTRUCTURAL RISK</span><h2>REAL WORLD OBSERVATIONS</h2></div>
+        <span class="feature-status">PUBLIC INDIAN TELECOM DATA</span>
+      </div>
+      
+      <div class="feature-grid financial-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 1em;">
+        <div class="metric-card">
+          <span class="metric-label">LIVE WEATHER · MUMBAI, INDIA</span>
+          <div class="cost-rows" style="margin-top:1em;">
+            <div class="cost-row"><span>TEMPERATURE</span><b id="rw-temp">--°C</b></div>
+            <div class="cost-row"><span>RAINFALL</span><b id="rw-rain">-- mm</b></div>
+            <div class="cost-row"><span>WIND SPEED</span><b id="rw-wind">-- km/h</b></div>
+            <div class="cost-row"><span>HUMIDITY</span><b id="rw-hum">-- %</b></div>
+            <div class="cost-row"><span>CONDITION</span><b id="rw-cond">--</b></div>
+          </div>
+          <div class="impact-sub" style="margin-top:1em;">SOURCE: Open-Meteo<br>LAST UPDATED: <span id="rw-time">--</span></div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">NETWORK ENVIRONMENTAL RISK</span>
+          <div class="impact-figure frozen" id="rw-risk-score">--%</div>
+          <div class="impact-sub" id="rw-risk-level">CALCULATING...</div>
+          <div class="breakdown-rows" style="margin-top:1em;">
+            <div class="breakdown-row"><span class="bd-name">RAINFALL</span><div class="bd-track"><div class="bd-fill" id="rw-bar-rain" style="width:0%"></div></div><span class="bd-val" id="rw-val-rain">--</span></div>
+            <div class="breakdown-row"><span class="bd-name">WIND</span><div class="bd-track"><div class="bd-fill" id="rw-bar-wind" style="width:0%"></div></div><span class="bd-val" id="rw-val-wind">--</span></div>
+            <div class="breakdown-row"><span class="bd-name">URBAN EXPOSURE</span><div class="bd-track"><div class="bd-fill" style="width:80%;background:var(--amber)"></div></div><span class="bd-val">HIGH</span></div>
+            <div class="breakdown-row"><span class="bd-name">INFRASTRUCTURE</span><div class="bd-track"><div class="bd-fill" style="width:90%;background:var(--crit)"></div></div><span class="bd-val">HIGH</span></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">NETWORK ASSETS AT RISK</span>
+          <div class="cost-rows" style="margin-top:1em;" id="rw-assets-list">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid predictive-grid" style="grid-template-columns: 2fr 1fr;">
+        <div class="metric-card chart-card" style="padding:0; height: 360px;">
+          <div id="rw-map" style="width:100%; height:100%; background:var(--bg-1);"></div>
+          <div class="topo-map-label" style="bottom:10px;">ENVIRONMENTAL RISK OVERLAY</div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">PREDICTIVE ALERT</span>
+          <div style="margin-top: 1em; padding: 1em; border: 1px solid var(--crit); background: rgba(239,91,91,0.05);">
+            <div style="color:var(--crit); font-family:var(--mono); font-weight:700; margin-bottom:.5em;">PREDICTIVE NETWORK ALERT</div>
+            <div style="font-size: .8rem; color:var(--ink-0); margin-bottom:.5em;">Mumbai Region<br>Environmental risk elevated</div>
+            <div style="font-family:var(--mono); font-size: .7rem; color:var(--ink-1); margin-bottom:1em;">
+              Risk Score: <span id="rw-alert-score">--%</span><br>
+              Assets At Risk: <span id="rw-alert-assets">--</span>
+            </div>
+            <div class="pill state-alert" style="display:inline-block;">PRE-INCIDENT</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="feature-panel" data-feature-panel="companies">
+      <div class="feature-head">
+        <div><span class="eyebrow">B2B EXPOSURE</span><h2>ENTERPRISE IMPACT</h2></div>
+        <span class="feature-status">PUBLIC COMPANY CONTEXT + MODELLED NETWORK DEPENDENCY</span>
+      </div>
+      <div class="feature-grid predictive-grid" style="grid-template-columns: 1fr 2fr;">
+        <div class="metric-card" style="padding:0;">
+          <div class="breakdown-rows" style="margin:0; padding:1em;" id="company-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="metric-card" id="company-details" style="display:none;">
+          <span class="metric-label" id="cd-name" style="font-size:1.2rem; color:var(--ink-0);">HDFC BANK</span>
+          <div class="impact-figure frozen" id="cd-status" style="margin-bottom: 1em;">AT RISK</div>
+          
+          <div class="financial-grid feature-grid" style="gap:1px; background:var(--panel-line); margin-bottom: 1em;">
+            <div class="metric-card" style="min-height:auto; background:var(--panel);">
+              <span class="metric-label">NETWORK DEPENDENCY</span>
+              <div class="impact-figure frozen" id="cd-dep">84%</div>
+            </div>
+            <div class="metric-card" style="min-height:auto; background:var(--panel);">
+              <span class="metric-label">EST. USERS IMPACTED</span>
+              <div class="impact-figure frozen" id="cd-users">1.24M</div>
+            </div>
+            <div class="metric-card" style="min-height:auto; background:var(--panel);">
+              <span class="metric-label">ESTIMATED REVENUE EXPOSURE</span>
+              <div class="impact-figure frozen" id="cd-rev" style="color:var(--crit);">₹42.8 Lakh/hr</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap: 2em;">
+            <div style="flex:1;">
+              <span class="metric-label">AFFECTED SERVICES</span>
+              <ul style="list-style:none; padding:0; margin-top:.5em; color:var(--ink-1); font-size:.8rem; line-height:1.6;" id="cd-services">
+                <li>• UPI</li>
+                <li>• Internet Banking</li>
+                <li>• ATM Connectivity</li>
+              </ul>
+            </div>
+            <div style="flex:1;">
+              <span class="metric-label">AFFECTED LOCATIONS</span>
+              <ul style="list-style:none; padding:0; margin-top:.5em; color:var(--ink-1); font-size:.8rem; line-height:1.6;" id="cd-locations">
+                <li>Mumbai</li>
+                <li>Thane</li>
+                <li>Navi Mumbai</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5em; padding: 1em; border: 1px solid var(--fiber-dim); background: rgba(63,214,196,0.05);">
+            <div style="color:var(--fiber); font-family:var(--mono); font-weight:700; margin-bottom:.5em; font-size:.7rem;">AI RECOMMENDATION</div>
+            <div style="font-size: .8rem; color:var(--ink-0);" id="cd-ai">Prioritize alternate route MMR-07 to restore core banking links.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="feature-panel" data-feature-panel="users">
+      <div class="feature-head">
+        <div><span class="eyebrow">POPULATION SCALE</span><h2>SUBSCRIBER IMPACT</h2></div>
+        <span class="feature-status">ESTIMATED SUBSCRIBER IMPACT</span>
+      </div>
+      
+      <div class="feature-grid financial-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 1em;">
+        <div class="metric-card">
+          <span class="metric-label">TOTAL CONNECTED</span>
+          <div class="impact-figure frozen" id="sub-total">18,420,381</div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">CURRENTLY IMPACTED</span>
+          <div class="impact-figure frozen" id="sub-impacted" style="color:var(--crit);">0</div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">5G USERS</span>
+          <div class="impact-figure frozen" id="sub-5g">0</div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">UPI USERS</span>
+          <div class="impact-figure frozen" id="sub-upi">0</div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">ENTERPRISE USERS</span>
+          <div class="impact-figure frozen" id="sub-ent">0</div>
+        </div>
+      </div>
+
+      <div class="feature-grid predictive-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="metric-card">
+          <span class="metric-label">GEOGRAPHIC IMPACT</span>
+          <div class="breakdown-rows" style="margin-top:1em;" id="sub-geo">
+            <div class="breakdown-row"><span class="bd-name">Mumbai City</span><div class="bd-track"><div class="bd-fill" style="width:0%"></div></div><span class="bd-val">0</span></div>
+            <div class="breakdown-row"><span class="bd-name">Thane</span><div class="bd-track"><div class="bd-fill" style="width:0%"></div></div><span class="bd-val">0</span></div>
+            <div class="breakdown-row"><span class="bd-name">Navi Mumbai</span><div class="bd-track"><div class="bd-fill" style="width:0%"></div></div><span class="bd-val">0</span></div>
+            <div class="breakdown-row"><span class="bd-name">Mira-Bhayandar</span><div class="bd-track"><div class="bd-fill" style="width:0%"></div></div><span class="bd-val">0</span></div>
+            <div class="breakdown-row"><span class="bd-name">Other</span><div class="bd-track"><div class="bd-fill" style="width:0%"></div></div><span class="bd-val">0</span></div>
+          </div>
+        </div>
+        <div class="metric-card chart-card" style="padding:0;">
+           <div class="topo-map-label" style="bottom:auto; top:10px; border-bottom:1px solid rgba(255,255,255,0.1);">POPULATION HEATMAP</div>
+           <canvas id="sub-heatmap-chart" style="width:100%; height:100%;"></canvas>
+        </div>
       </div>
     </section>
   </div>
@@ -1231,11 +1451,39 @@ function tooltipHtml(n){
     <div class="t-row"><span>TRAFFIC</span><b>${traffic}</b></div>
     <div class="t-row"><span>ALERTS</span><b>${alerts}</b></div>`;
 }
- 
+
+function popupHtml(n){
+  const isInc = (SIM.phase !== 'normal' && SIM.phase !== 'healthy');
+  let ratio = 0;
+  if(isInc && (n.status === 'critical' || n.status === 'degraded' || n.status === 'recovering')) {
+    ratio = Math.min(1, Math.max(0.1, Array.from(SIM.blastSet).length / 23));
+  }
+  
+  const nodes = Math.floor(23 * ratio);
+  const regions = Math.floor(4 * ratio);
+  const svcs = Math.floor(14 * ratio);
+  const subs = Math.floor(184204 * ratio);
+  const exp = Math.floor(42.8 * ratio).toFixed(1);
+  
+  return `<div style="min-width: 200px; font-family: var(--sans);">
+    <div style="font-family: var(--mono); font-weight: 700; color: var(--ink-0); margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${n.label} — BUSINESS BLAST RADIUS</div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="color:var(--ink-1); font-size:11px;">Network Impact</span><b style="color:var(--ink-0); font-size:11px;">${nodes} nodes</b></div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="color:var(--ink-1); font-size:11px;">Geographic Impact</span><b style="color:var(--ink-0); font-size:11px;">${regions} regions</b></div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="color:var(--ink-1); font-size:11px;">Enterprise Impact</span><b style="color:var(--ink-0); font-size:11px;">${svcs} services</b></div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="color:var(--ink-1); font-size:11px;">Subscriber Impact</span><b style="color:var(--ink-0); font-size:11px;">${subs.toLocaleString()}</b></div>
+    <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:4px; border-top: 1px solid rgba(255,255,255,0.1);"><span style="color:var(--ink-1); font-size:11px;">Estimated Exposure</span><b style="color:var(--crit); font-size:11px;">₹${exp} Lakh/hr</b></div>
+  </div>`;
+}
+
 function updateNodeMarker(n){
   const col = statusColor(n.status);
   n.marker.setStyle({ color: col, fillColor: col, fillOpacity: n.status==='critical'?0.95:0.85 });
   n.marker.setTooltipContent(tooltipHtml(n));
+  if(!n.marker.getPopup()) {
+    n.marker.bindPopup(popupHtml(n), { className: 'noc-popup' });
+  } else {
+    n.marker.setPopupContent(popupHtml(n));
+  }
 }
 NODES.forEach(updateNodeMarker);
  
@@ -1990,7 +2238,8 @@ function renderHealthBand(){
     network:['CR-MUM-01','CR-MUM-02','CS-MUM-01','CS-MUM-02'],
     access:['ER-MUM-01','BSC-MUM-01','RNC-MUM-01','BTS-MUM-014','BTS-MUM-022'],
     service:['DNS-SVC','AUTH-SVC','PAY-SVC'],
-    customer:['CUST-RETAIL','CUST-ENT','CUST-IOT']
+    customer:['CUST-RETAIL','CUST-ENT','CUST-IOT'],
+    exposure:['CUST-RETAIL','CUST-ENT','CUST-IOT']
   };
   const rank={healthy:0,recovering:1,degraded:2,critical:3,suppressed:1};
   Object.entries(groups).forEach(([key,ids])=>{
@@ -2000,13 +2249,13 @@ function renderHealthBand(){
   const statusMap={normal:'ALL SYSTEMS NOMINAL',storm:'CRITICAL PROPAGATION DETECTED',correlating:'CORRELATION — PROPAGATION MAPPED',rootcause:'ROOT CAUSE / BLAST RADIUS CONFIRMED',rerouting:'TRAFFIC RE-ROUTING',runbook:'REMEDIATION IN PROGRESS',recovering:'RECOVERY WAVE IN PROGRESS',healthy:'ALL SYSTEMS NOMINAL'};
   document.getElementById('health-feature-status').textContent=statusMap[SIM.phase]||'MONITORING';
   const text = SIM.phase==='normal'||SIM.phase==='healthy'
-    ? 'The system tracks how an infrastructure fault propagates downstream through dependent layers.'
+    ? 'The system tracks how an infrastructure fault propagates downstream through business layers.'
     : 'Red marks the origin of critical failure, amber shows downstream degradation, and blue shows active recovery.';
   document.getElementById('health-explanation').textContent=text;
   const ai=document.getElementById('health-ai-explanation');
-  if(SIM.phase==='normal'||SIM.phase==='healthy') ai.textContent='Gemini explanation: all monitored layers are nominal. There is no active propagation requiring operator action.';
-  else if(SIM.phase==='recovering'||SIM.phase==='healthy') ai.textContent='Gemini explanation: recovery is progressing from the failed infrastructure path toward services and customers. The network is moving back toward nominal state.';
-  else ai.textContent='Gemini explanation: the incident begins at the physical/network layer and propagates downstream. The pattern is consistent with an upstream uplink failure rather than independent service failures.';
+  if(SIM.phase==='normal'||SIM.phase==='healthy') ai.textContent='All monitored layers are nominal. There is no active propagation requiring operator action.';
+  else if(SIM.phase==='recovering'||SIM.phase==='healthy') ai.textContent='Recovery is progressing from the failed infrastructure path toward business exposure. The network is moving back toward nominal state.';
+  else ai.textContent='The incident begins at the physical/network layer and propagates downstream into business exposure. The pattern is consistent with an upstream uplink failure rather than independent service failures.';
 }
 renderHealthBand();
  
@@ -2042,6 +2291,38 @@ const resetBtn = document.getElementById('reset-btn');
 document.getElementById('enter-noc-btn').addEventListener('click', ()=>{
   document.getElementById('noc').scrollIntoView({behavior: REDUCED_MOTION?'auto':'smooth'});
   setTimeout(()=>map.invalidateSize(), 400);
+});
+
+const modeBtns = document.querySelectorAll('.mode-btn');
+let appMode = 'simulation';
+
+modeBtns.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    modeBtns.forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    appMode = e.target.dataset.mode;
+    
+    if (appMode === 'realdata') {
+      simBtn.disabled = true;
+      resetBtn.disabled = true;
+      simBtn.textContent = 'REAL DATA MODE (SIM DISABLED)';
+      logEvent('SWITCHED TO REAL INDIA DATA MODE', 'info');
+      
+      // Auto-open Real World panel
+      const rwChip = document.querySelector('[data-feature="realworld"]');
+      if(rwChip) rwChip.click();
+      fetchRealWorldData();
+    } else {
+      simBtn.disabled = false;
+      resetBtn.disabled = false;
+      simBtn.textContent = 'SIMULATE MUMBAI FIBER CUT';
+      logEvent('SWITCHED TO INCIDENT SIMULATION MODE', 'info');
+      
+      // Return to full topology
+      const allChip = document.querySelector('[data-layer="all"]');
+      if(allChip) allChip.click();
+    }
+  });
 });
  
 function runSimulation(){
@@ -2113,8 +2394,8 @@ function runSimulation(){
     document.getElementById('predictive-caption').textContent = predT<1 ? 'Optical power drifting on ER-MUM-01 uplink' : 'Failure threshold crossed — matches incident timeline';
     const pai=document.getElementById('predictive-ai-explanation');
     if(pai) pai.textContent = predT<1
-      ? 'Gemini explanation: optical power is drifting away from nominal. This is an early-warning signal that precedes the observed uplink failure.'
-      : 'Gemini explanation: the optical signal crossed the warning threshold, matching the incident timeline and strengthening the predictive-failure evidence.';
+      ? 'Optical power is drifting away from nominal. This is an early-warning signal that precedes the observed uplink failure.'
+      : 'The optical signal crossed the warning threshold, matching the incident timeline and strengthening the predictive-failure evidence.';
     if(predT>=1) clearInterval(predTimer);
   }, 200);
  
@@ -2194,6 +2475,261 @@ try {
   };
 } catch(e){}
  
+/* ==================================================================
+   19. INTELLIGENCE VIEWS LOGIC (REAL WORLD, COMPANIES, USERS)
+   ================================================================== */
+let rwMap = null;
+let rwDataFetched = false;
+
+// 1. Real World implementation
+async function fetchRealWorldData() {
+  if(rwDataFetched) return;
+  rwDataFetched = true;
+  try {
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=19.0760&longitude=72.8777&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code');
+    if(!res.ok) throw new Error("API Failed");
+    const data = await res.json();
+    const cur = data.current;
+    
+    document.getElementById('rw-temp').textContent = cur.temperature_2m + '°C';
+    document.getElementById('rw-rain').textContent = cur.precipitation + ' mm';
+    document.getElementById('rw-wind').textContent = cur.wind_speed_10m + ' km/h';
+    document.getElementById('rw-hum').textContent = cur.relative_humidity_2m + ' %';
+    
+    const codes = {0:'Clear', 1:'Partly Cloudy', 2:'Cloudy', 3:'Overcast', 45:'Fog', 51:'Drizzle', 61:'Rain', 71:'Snow', 80:'Showers', 95:'Thunderstorm'};
+    let cond = codes[cur.weather_code] || 'Unknown';
+    if(cur.precipitation > 10) cond = 'Heavy Rain';
+    document.getElementById('rw-cond').textContent = cond;
+    document.getElementById('rw-time').textContent = new Date().toLocaleTimeString();
+
+    let risk = 15;
+    let rainRisk = (cur.precipitation / 20) * 100; if(rainRisk>100) rainRisk=100;
+    let windRisk = (cur.wind_speed_10m / 60) * 100; if(windRisk>100) windRisk=100;
+    
+    document.getElementById('rw-bar-rain').style.width = rainRisk + '%';
+    document.getElementById('rw-bar-wind').style.width = windRisk + '%';
+    document.getElementById('rw-bar-rain').style.background = rainRisk>70?'var(--crit)':(rainRisk>30?'var(--amber)':'var(--ok)');
+    document.getElementById('rw-bar-wind').style.background = windRisk>70?'var(--crit)':(windRisk>30?'var(--amber)':'var(--ok)');
+    
+    document.getElementById('rw-val-rain').textContent = rainRisk>70?'HIGH':(rainRisk>30?'MODERATE':'LOW');
+    document.getElementById('rw-val-wind').textContent = windRisk>70?'HIGH':(windRisk>30?'MODERATE':'LOW');
+    
+    risk += (rainRisk * 0.4) + (windRisk * 0.2) + 30; // urban + infra adds 30 base
+    risk = Math.min(100, Math.round(risk));
+    
+    document.getElementById('rw-risk-score').textContent = risk + '%';
+    document.getElementById('rw-risk-level').textContent = risk>70?'HIGH RISK':(risk>40?'MODERATE RISK':'NOMINAL');
+    
+    document.getElementById('rw-alert-score').textContent = risk + '%';
+    const atRiskCount = Object.values(nodeById).filter(n => ['critical','degraded'].includes(n.status) || risk > 50).length;
+    document.getElementById('rw-alert-assets').textContent = String(atRiskCount);
+    if(risk > 60) {
+      logEvent('ENVIRONMENTAL RISK ELEVATED (MUMBAI) — ' + atRiskCount + ' ASSETS AT RISK', 'warn');
+    }
+
+  } catch(e) {
+    console.error('Weather fetch failed, using fallback.', e);
+    document.getElementById('rw-temp').textContent = '29.4°C';
+    document.getElementById('rw-rain').textContent = '14.2 mm';
+    document.getElementById('rw-wind').textContent = '38 km/h';
+    document.getElementById('rw-hum').textContent = '84 %';
+    document.getElementById('rw-cond').textContent = 'Heavy Rain (Fallback)';
+    document.getElementById('rw-time').textContent = new Date().toLocaleTimeString();
+    
+    document.getElementById('rw-risk-score').textContent = '82%';
+    document.getElementById('rw-risk-level').textContent = 'HIGH RISK';
+    document.getElementById('rw-bar-rain').style.width = '85%';
+    document.getElementById('rw-bar-rain').style.background = 'var(--crit)';
+    document.getElementById('rw-val-rain').textContent = 'HIGH';
+    document.getElementById('rw-bar-wind').style.width = '55%';
+    document.getElementById('rw-bar-wind').style.background = 'var(--amber)';
+    document.getElementById('rw-val-wind').textContent = 'MODERATE';
+    
+    document.getElementById('rw-alert-score').textContent = '82%';
+    document.getElementById('rw-alert-assets').textContent = '7';
+    
+    logEvent('ENVIRONMENTAL RISK ELEVATED (MUMBAI)', 'warn');
+  }
+
+  // Draw assets from actual NODES data
+  const alist = document.getElementById('rw-assets-list');
+  const riskMap = {
+    'FIB-MUM-A': 'HIGH RISK', 'FIB-MUM-B': 'MODERATE RISK',
+    'CR-MUM-01': 'MODERATE RISK', 'ER-MUM-01': 'HIGH RISK',
+    'BSC-MUM-01': 'HIGH RISK', 'BTS-MUM-014': 'HIGH RISK',
+    'RNC-MUM-01': 'MODERATE RISK', 'CS-MUM-01': 'MODERATE RISK',
+    'CS-MUM-02': 'LOW RISK', 'BTS-MUM-022': 'LOW RISK',
+    'DNS-SVC': 'MODERATE RISK', 'AUTH-SVC': 'MODERATE RISK',
+    'PAY-SVC': 'LOW RISK'
+  };
+  const kindLabel = {fiber:'FIBER', router:'CORE', switch:'AGGREGATION', edge:'CORE', bsc:'ACCESS', rnc:'ACCESS', bts:'ACCESS', svc:'SERVICE', cust:'CUSTOMER'};
+  const riskColor = {'HIGH RISK':'var(--crit)', 'MODERATE RISK':'var(--amber)', 'LOW RISK':'var(--ok)'};
+  alist.innerHTML = '';
+  NODES.filter(n => riskMap[n.id]).forEach(n => {
+    const risk = riskMap[n.id];
+    alist.innerHTML += `<div class="cost-row"><span>${n.id} ${kindLabel[n.kind]||''}</span><b style="color:${riskColor[risk]}">${risk}</b></div>`;
+  });
+
+  // Init mini map if not initialized
+  if(!rwMap) {
+    rwMap = L.map('rw-map', {zoomControl: false, attributionControl: false}).setView([19.0760, 72.8777], 10);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(rwMap);
+    
+    // Add a risk circle
+    L.circle([19.0760, 72.8777], {
+      color: getCss('--crit'), fillColor: getCss('--crit'), fillOpacity: 0.1, radius: 15000
+    }).addTo(rwMap);
+
+    // Overlay nodes
+    Object.values(nodeById).forEach(n => {
+      const ll = coordOf(n.id);
+      if(!ll) return;
+      L.circleMarker(ll, {radius: 4, color: getCss('--amber'), fillColor: getCss('--bg-0'), weight: 2}).addTo(rwMap);
+    });
+  }
+}
+
+// 2. Companies implementation
+const companiesData = [
+  {id:'jio', name:'Reliance Jio', dep:92, users:'4.2M', rev:'140.2', svc:['Core Peering', '4G/5G Backhaul'], loc:['Mumbai MMR', 'Thane']},
+  {id:'hdfc', name:'HDFC Bank', dep:84, users:'1.24M', rev:'42.8', svc:['UPI Routing', 'Netbanking', 'ATM'], loc:['Mumbai City']},
+  {id:'airtel', name:'Airtel', dep:68, users:'2.1M', rev:'85.4', svc:['B2B ILL', 'Voice Interconnect'], loc:['Navi Mumbai']},
+  {id:'phonepe', name:'PhonePe', dep:75, users:'3.8M', rev:'65.0', svc:['Payment Gateway'], loc:['Maharashtra Circle']},
+  {id:'tata', name:'Tata Comm.', dep:45, users:'0.8M', rev:'22.1', svc:['Enterprise WAN'], loc:['Mumbai MMR']}
+];
+
+function renderCompanies() {
+  const listEl = document.getElementById('company-list');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  
+  const isInc = (SIM.phase !== 'normal' && SIM.phase !== 'healthy');
+  const severityMap = {jio:'CRITICAL', hdfc:'AT RISK', airtel:'DEGRADED', phonepe:'AT RISK', tata:'DEGRADED'};
+  const colorMap = {'CRITICAL':'var(--crit)', 'DEGRADED':'var(--amber)', 'AT RISK':'var(--amber)', 'HEALTHY':'var(--ok)'};
+
+  companiesData.forEach(c => {
+    const status = isInc ? severityMap[c.id] : 'HEALTHY';
+    const color = colorMap[status];
+    
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.style.cursor = 'pointer';
+    row.style.padding = '1em 0.5em';
+    row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+    row.innerHTML = `<span class="bd-name" style="font-weight:600;">${c.name}</span><div class="bd-track" style="flex:1"></div><span class="bd-val" style="color:${color}">${status}</span>`;
+    
+    row.onclick = () => {
+      document.getElementById('company-details').style.display = 'block';
+      document.getElementById('cd-name').textContent = c.name;
+      document.getElementById('cd-status').textContent = status;
+      document.getElementById('cd-status').style.color = color;
+      document.getElementById('cd-dep').textContent = c.dep + '%';
+      
+      let u = c.users; let r = '₹' + c.rev + ' Lakh/hr';
+      if(!isInc) { u = '0'; r = '₹0 /hr'; }
+      document.getElementById('cd-users').textContent = u;
+      document.getElementById('cd-rev').textContent = r;
+      
+      document.getElementById('cd-services').innerHTML = c.svc.map(s=>'<li>• '+s+'</li>').join('');
+      document.getElementById('cd-locations').innerHTML = c.loc.map(s=>'<li>'+s+'</li>').join('');
+    };
+    listEl.appendChild(row);
+  });
+  
+  if(listEl.firstChild) listEl.firstChild.click();
+}
+
+// 3. Users implementation
+let subHeatmapChart = null;
+
+function renderUsers() {
+  const isInc = (SIM.phase !== 'normal' && SIM.phase !== 'healthy');
+  
+  const maxImpacted = 184204;
+  const max5g = 92410;
+  const maxUpi = 61284;
+  const maxEnt = 30510;
+  
+  let ratio = 0;
+  if(isInc) {
+    ratio = Math.min(1, Math.max(0.1, Array.from(SIM.blastSet).length / 23));
+  }
+  
+  const imp = document.getElementById('sub-impacted');
+  if(!imp) return;
+  imp.textContent = Math.floor(maxImpacted * ratio).toLocaleString();
+  document.getElementById('sub-5g').textContent = Math.floor(max5g * ratio).toLocaleString();
+  document.getElementById('sub-upi').textContent = Math.floor(maxUpi * ratio).toLocaleString();
+  document.getElementById('sub-ent').textContent = Math.floor(maxEnt * ratio).toLocaleString();
+  
+  const geo = [
+    {n:'Mumbai City', v: 72410},
+    {n:'Thane', v: 41208},
+    {n:'Navi Mumbai', v: 28492},
+    {n:'Mira-Bhayandar', v: 18302},
+    {n:'Other', v: 23792}
+  ];
+  
+  const geoEl = document.getElementById('sub-geo');
+  geoEl.innerHTML = '';
+  let geoVals = [];
+  geo.forEach(g => {
+    let val = Math.floor(g.v * ratio);
+    geoVals.push(val);
+    let pct = (val / 80000) * 100;
+    let color = isInc ? 'var(--crit)' : 'var(--amber)';
+    geoEl.innerHTML += `<div class="breakdown-row"><span class="bd-name">${g.n}</span><div class="bd-track"><div class="bd-fill" style="width:${pct}%; background:${color}"></div></div><span class="bd-val">${val.toLocaleString()}</span></div>`;
+  });
+
+  // Simple ChartJS rendering for User Heatmap
+  if(window.Chart) {
+    const ctx = document.getElementById('sub-heatmap-chart');
+    if(subHeatmapChart) subHeatmapChart.destroy();
+    subHeatmapChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: geo.map(g=>g.n),
+        datasets: [{
+          data: geoVals,
+          backgroundColor: ['#ef5b5b', '#f2a93b', '#5fb4ff', '#3fd6c4', '#5f7488'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: {color: '#9fb2c3', font:{family:'SFMono-Regular'}} } },
+        cutout: '75%'
+      }
+    });
+  }
+}
+
+// Hook into layer switching to lazily render
+document.querySelectorAll('.feature-chip').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const target = e.target.closest('.feature-chip').getAttribute('data-feature');
+    if(target === 'realworld') {
+      fetchRealWorldData();
+      if(rwMap) setTimeout(()=>rwMap.invalidateSize(), 200);
+    } else if(target === 'companies') {
+      renderCompanies();
+    } else if(target === 'users') {
+      renderUsers();
+    }
+  });
+});
+
+// Update intelligence views whenever phase changes — we hook into
+// the 500ms financial ticker interval that's already running.
+setInterval(() => {
+  renderCompanies();
+  renderUsers();
+}, 2000);
+
+// Initialize views on first load
+renderCompanies();
+renderUsers();
+
 /* init */
 setPhase('normal');
 updateHealthPill();
