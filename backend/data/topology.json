@@ -1,0 +1,445 @@
+{
+  "network_name": "BharatNet Tier-1 Telecom Core & Edge Network",
+  "circle": "National Core & West Zone (Mumbai/Pune/Gujarat)",
+  "nodes": [
+    {
+      "id": "ER-MUM-01",
+      "name": "Mumbai Gateway Edge Router 01",
+      "type": "edge_router",
+      "vendor": "Cisco ASR 9904",
+      "ip": "103.45.12.1",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "core_edge",
+      "criticality": "P0",
+      "interfaces": [
+        "GigabitEthernet0/0/1",
+        "TenGigE0/1/0",
+        "TenGigE0/1/1"
+      ],
+      "upstream": [],
+      "optical_rx_dbm": -18.4,
+      "status": "HEALTHY"
+    },
+    {
+      "id": "ER-DEL-01",
+      "name": "Delhi National Transit Router 01",
+      "type": "edge_router",
+      "vendor": "Juniper MX960",
+      "ip": "103.45.16.1",
+      "location": "Delhi-Noida-DC2",
+      "layer": "core_edge",
+      "criticality": "P0",
+      "interfaces": [
+        "ge-0/0/0",
+        "xe-1/0/0",
+        "xe-1/0/1"
+      ],
+      "upstream": [],
+      "optical_rx_dbm": -19.1,
+      "status": "HEALTHY"
+    },
+    {
+      "id": "CS-MUM-01",
+      "name": "Mumbai Primary Core Switch",
+      "type": "core_switch",
+      "vendor": "Arista 7280R3",
+      "ip": "10.50.1.1",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "core",
+      "criticality": "P0",
+      "interfaces": [
+        "Ethernet1/1",
+        "Ethernet1/2",
+        "Ethernet2/1",
+        "Ethernet2/2"
+      ],
+      "upstream": [
+        "ER-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "CS-MUM-02",
+      "name": "Mumbai Secondary Core Switch (Redundant)",
+      "type": "core_switch",
+      "vendor": "Arista 7280R3",
+      "ip": "10.50.1.2",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "core",
+      "criticality": "P1",
+      "interfaces": [
+        "Ethernet1/1",
+        "Ethernet1/2"
+      ],
+      "upstream": [
+        "ER-MUM-01",
+        "ER-DEL-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "AS-MUM-01",
+      "name": "South Mumbai Aggregation Switch",
+      "type": "agg_switch",
+      "vendor": "Cisco Catalyst 9500",
+      "ip": "10.50.10.1",
+      "location": "Mumbai-NarimanPoint",
+      "layer": "aggregation",
+      "criticality": "P1",
+      "interfaces": [
+        "TenGigabitEthernet1/0/1",
+        "TenGigabitEthernet1/0/2"
+      ],
+      "upstream": [
+        "CS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "AS-MUM-02",
+      "name": "Suburban Mumbai Aggregation Switch",
+      "type": "agg_switch",
+      "vendor": "Cisco Catalyst 9500",
+      "ip": "10.50.10.2",
+      "location": "Mumbai-AndheriEast",
+      "layer": "aggregation",
+      "criticality": "P1",
+      "interfaces": [
+        "TenGigabitEthernet1/0/1",
+        "TenGigabitEthernet1/0/2"
+      ],
+      "upstream": [
+        "CS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "AS-MUM-03",
+      "name": "Datacenter Services Aggregation Switch",
+      "type": "agg_switch",
+      "vendor": "Cisco Catalyst 9500",
+      "ip": "10.50.10.3",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "aggregation",
+      "criticality": "P0",
+      "interfaces": [
+        "TenGigabitEthernet1/0/1",
+        "TenGigabitEthernet1/0/2"
+      ],
+      "upstream": [
+        "CS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "AS-PUN-01",
+      "name": "Pune Transit Aggregation Switch",
+      "type": "agg_switch",
+      "vendor": "Cisco Catalyst 9300",
+      "ip": "10.50.20.1",
+      "location": "Pune-Hinjewadi",
+      "layer": "aggregation",
+      "criticality": "P2",
+      "interfaces": [
+        "TenGigabitEthernet1/0/1"
+      ],
+      "upstream": [
+        "CS-MUM-02"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "BTS-MUM-01",
+      "name": "BKC Metro 5G Tower Hub",
+      "type": "bts_5g",
+      "vendor": "Ericsson Radio 4415",
+      "ip": "10.60.101.1",
+      "location": "Mumbai-BKC",
+      "layer": "access",
+      "subscribers": 42000,
+      "criticality": "P1",
+      "upstream": [
+        "AS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "BTS-MUM-02",
+      "name": "Colaba / Fort 5G Tower Hub",
+      "type": "bts_5g",
+      "vendor": "Ericsson Radio 4415",
+      "ip": "10.60.101.2",
+      "location": "Mumbai-Colaba",
+      "layer": "access",
+      "subscribers": 31000,
+      "criticality": "P1",
+      "upstream": [
+        "AS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "BTS-MUM-03",
+      "name": "Andheri Tech Park 5G Cell",
+      "type": "bts_5g",
+      "vendor": "Ericsson Radio 4415",
+      "ip": "10.60.102.1",
+      "location": "Mumbai-AndheriEast",
+      "layer": "access",
+      "subscribers": 28000,
+      "criticality": "P2",
+      "upstream": [
+        "AS-MUM-02"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "BTS-MUM-04",
+      "name": "Powai Tech Campus 5G Cell",
+      "type": "bts_5g",
+      "vendor": "Nokia AirScale",
+      "ip": "10.60.102.2",
+      "location": "Mumbai-Powai",
+      "layer": "access",
+      "subscribers": 19500,
+      "criticality": "P2",
+      "upstream": [
+        "AS-MUM-02"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "BSC-MUM-01",
+      "name": "Base Station Controller West-1",
+      "type": "bsc_controller",
+      "vendor": "Nokia Flexi",
+      "ip": "10.50.30.1",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "control_plane",
+      "criticality": "P0",
+      "upstream": [
+        "CS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "SRV-PAY-01",
+      "name": "Unified Payment Interface Gateway",
+      "type": "app_server",
+      "vendor": "Dell PowerEdge R750 (Linux)",
+      "ip": "10.70.1.10",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "service_workload",
+      "criticality": "P0",
+      "service_role": "UPI / Payment Routing",
+      "upstream": [
+        "AS-MUM-03"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "SRV-AUTH-01",
+      "name": "Subscriber AAA & HLR / HSS Server",
+      "type": "app_server",
+      "vendor": "Dell PowerEdge R750 (Linux)",
+      "ip": "10.70.1.11",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "service_workload",
+      "criticality": "P0",
+      "service_role": "Subscriber Authentication & SIM HLR",
+      "upstream": [
+        "AS-MUM-03"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "SRV-DNS-01",
+      "name": "National Recursive DNS Node 01",
+      "type": "dns_server",
+      "vendor": "HP ProLiant DL380",
+      "ip": "10.70.1.12",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "service_workload",
+      "criticality": "P1",
+      "service_role": "Primary DNS Resolver",
+      "upstream": [
+        "AS-MUM-03"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "SRV-SMS-01",
+      "name": "SMSC Banking OTP Delivery Gateway",
+      "type": "app_server",
+      "vendor": "Dell PowerEdge R750",
+      "ip": "10.70.1.13",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "service_workload",
+      "criticality": "P1",
+      "service_role": "OTP & Critical SMS Engine",
+      "upstream": [
+        "AS-MUM-03"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "FW-MUM-01",
+      "name": "DC Core Edge Firewall Cluster",
+      "type": "firewall",
+      "vendor": "Palo Alto PA-5250",
+      "ip": "10.50.0.1",
+      "location": "Mumbai-BKC-DC1",
+      "layer": "security",
+      "criticality": "P0",
+      "upstream": [
+        "ER-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "OLT-MUM-01",
+      "name": "Fiber-To-The-Home Optical Line Terminal 01",
+      "type": "olt_ftth",
+      "vendor": "Huawei SmartAX EA5800",
+      "ip": "10.60.201.1",
+      "location": "Mumbai-Bandra",
+      "layer": "access",
+      "subscribers": 18000,
+      "criticality": "P2",
+      "upstream": [
+        "AS-MUM-01"
+      ],
+      "status": "HEALTHY"
+    },
+    {
+      "id": "RTR-PUN-01",
+      "name": "Pune Edge Branch Router",
+      "type": "edge_router",
+      "vendor": "Cisco ISR 4451",
+      "ip": "10.50.20.254",
+      "location": "Pune-Shivajinagar",
+      "layer": "access",
+      "criticality": "P2",
+      "upstream": [
+        "AS-PUN-01"
+      ],
+      "status": "HEALTHY"
+    }
+  ],
+  "links": [
+    {
+      "source": "ER-MUM-01",
+      "target": "CS-MUM-01",
+      "bandwidth": "100 Gbps",
+      "type": "Dark Fiber Trunk 1"
+    },
+    {
+      "source": "ER-MUM-01",
+      "target": "CS-MUM-02",
+      "bandwidth": "40 Gbps",
+      "type": "Redundant Fiber Ring"
+    },
+    {
+      "source": "ER-DEL-01",
+      "target": "CS-MUM-02",
+      "bandwidth": "100 Gbps",
+      "type": "Inter-Metro Backhaul"
+    },
+    {
+      "source": "ER-MUM-01",
+      "target": "FW-MUM-01",
+      "bandwidth": "40 Gbps",
+      "type": "Security Transit"
+    },
+    {
+      "source": "CS-MUM-01",
+      "target": "AS-MUM-01",
+      "bandwidth": "40 Gbps",
+      "type": "Metro Distribution Ring A"
+    },
+    {
+      "source": "CS-MUM-01",
+      "target": "AS-MUM-02",
+      "bandwidth": "40 Gbps",
+      "type": "Metro Distribution Ring B"
+    },
+    {
+      "source": "CS-MUM-01",
+      "target": "AS-MUM-03",
+      "bandwidth": "100 Gbps",
+      "type": "Datacenter Spine Fabric"
+    },
+    {
+      "source": "CS-MUM-01",
+      "target": "BSC-MUM-01",
+      "bandwidth": "40 Gbps",
+      "type": "Telco Control Link"
+    },
+    {
+      "source": "CS-MUM-02",
+      "target": "AS-PUN-01",
+      "bandwidth": "10 Gbps",
+      "type": "Inter-City Expressway Link"
+    },
+    {
+      "source": "AS-MUM-01",
+      "target": "BTS-MUM-01",
+      "bandwidth": "10 Gbps",
+      "type": "5G Fronthaul Fiber"
+    },
+    {
+      "source": "AS-MUM-01",
+      "target": "BTS-MUM-02",
+      "bandwidth": "10 Gbps",
+      "type": "5G Fronthaul Fiber"
+    },
+    {
+      "source": "AS-MUM-01",
+      "target": "OLT-MUM-01",
+      "bandwidth": "10 Gbps",
+      "type": "FTTH GPON Distribution"
+    },
+    {
+      "source": "AS-MUM-02",
+      "target": "BTS-MUM-03",
+      "bandwidth": "10 Gbps",
+      "type": "5G Fronthaul Fiber"
+    },
+    {
+      "source": "AS-MUM-02",
+      "target": "BTS-MUM-04",
+      "bandwidth": "10 Gbps",
+      "type": "5G Fronthaul Fiber"
+    },
+    {
+      "source": "AS-MUM-03",
+      "target": "SRV-PAY-01",
+      "bandwidth": "25 Gbps",
+      "type": "Top-Of-Rack Server Link"
+    },
+    {
+      "source": "AS-MUM-03",
+      "target": "SRV-AUTH-01",
+      "bandwidth": "25 Gbps",
+      "type": "Top-Of-Rack Server Link"
+    },
+    {
+      "source": "AS-MUM-03",
+      "target": "SRV-DNS-01",
+      "bandwidth": "10 Gbps",
+      "type": "Top-Of-Rack Server Link"
+    },
+    {
+      "source": "AS-MUM-03",
+      "target": "SRV-SMS-01",
+      "bandwidth": "10 Gbps",
+      "type": "Top-Of-Rack Server Link"
+    },
+    {
+      "source": "AS-PUN-01",
+      "target": "RTR-PUN-01",
+      "bandwidth": "1 Gbps",
+      "type": "Branch Lease Line"
+    }
+  ]
+}

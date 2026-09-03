@@ -1,0 +1,44 @@
+[
+  {
+    "pattern_id": "PAT-FLAP-BTS-003",
+    "name": "Andheri Tech Park 5G Scheduled Radio Calibration Flapping",
+    "device_id": "BTS-MUM-03",
+    "alert_types": [
+      "link_flapping",
+      "cell_radio_reset",
+      "snmp_timeout"
+    ],
+    "avg_auto_heal_time_sec": 195,
+    "historical_occurrences_this_month": 4,
+    "action_recommendation": "Auto-suppress immediate escalation with 240s safety countdown. Self-heals after internal antenna phase sync.",
+    "always_resolved_without_intervention": true
+  },
+  {
+    "pattern_id": "PAT-BACKUP-CPU-001",
+    "name": "Midnight Datacenter Spool Backup CPU Saturation",
+    "device_id": "SRV-PAY-01",
+    "alert_types": [
+      "cpu_utilization_warning",
+      "disk_io_high"
+    ],
+    "avg_auto_heal_time_sec": 280,
+    "historical_occurrences_this_month": 12,
+    "action_recommendation": "Scheduled cron task (pg_dump). Auto-suppress unless persistence > 360 seconds.",
+    "always_resolved_without_intervention": true
+  },
+  {
+    "pattern_id": "PAT-FIBER-CUT-MUM-01",
+    "name": "Major Metro Dark Fiber Trunk 1 Physical Shearing",
+    "device_id": "ER-MUM-01",
+    "alert_types": [
+      "link_down",
+      "bgp_session_down",
+      "ospf_nbr_down",
+      "carrier_loss"
+    ],
+    "avg_auto_heal_time_sec": null,
+    "historical_occurrences_this_month": 1,
+    "matched_runbook_id": "RB-002",
+    "always_resolved_without_intervention": false
+  }
+]

@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BharatNet — AIOps NOC Commander</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg-0:#060a10;
+  --bg-1:#0a1119;
+  --bg-2:#0e1723;
+  --panel:#0d151f;
+  --panel-line:#1b2836;
+  --ink-0:#eaf1f7;
+  --ink-1:#9fb2c3;
+  --ink-2:#5f7488;
+  --fiber:#3fd6c4;
+  --fiber-dim:#1c5d55;
+  --signal:#5fb4ff;
+  --amber:#f2a93b;
+  --crit:#ef5b5b;
+  --ok:#39c98a;
+  --grid-line:rgba(95,180,255,0.05);
+  --accent-glow:0 0 24px rgba(63,214,196,0.35);
+  --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;
+  --mono:'SFMono-Regular','JetBrains Mono',Menlo,Consolas,monospace;
+  --r-motion:1;
+}
+[data-theme="light"]{
+  --bg-0:#eef2f5;
+  --bg-1:#e6ecf1;
+  --bg-2:#dde6ec;
+  --panel:#f4f7f9;
+  --panel-line:#c7d3dc;
+  --ink-0:#101a24;
+  --ink-1:#3d505f;
+  --ink-2:#748695;
+  --fiber:#0d8f7f;
+  --fiber-dim:#a9d8d0;
+  --signal:#1a6fc4;
+  --amber:#b3720a;
+  --crit:#c23a3a;
+  --ok:#1f9260;
+  --grid-line:rgba(13,60,90,0.06);
+  --accent-glow:0 0 24px rgba(13,143,127,0.18);
+}
+@media (prefers-reduced-motion: reduce){ :root{ --r-motion:0; } }
+ 
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg-0);
+  color:var(--ink-0);
+  font-family:var(--sans);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  transition:background .6s ease, color .6s ease;
+}
+::selection{background:var(--fiber); color:var(--bg-0);}
+a{color:inherit;}
+button{font-family:inherit; cursor:pointer;}
+:focus-visible{outline:2px solid var(--fiber); outline-offset:3px;}
+ 
+.bg-grid{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size:64px 64px;
+  transition:background-image .6s ease;
+}
+ 
+/* ============================================================
+   THEME PULSE OVERLAY
+   ============================================================ */
+#theme-pulse{
+  position:fixed; z-index:9999; border-radius:50%;
+  pointer-events:none; mix-blend-mode:screen;
+  background:radial-gradient(circle, var(--fiber) 0%, transparent 70%);
+  opacity:0; transform:translate(-50%,-50%) scale(0);
+}
+[data-theme="light"] #theme-pulse{ mix-blend-mode:multiply; }
+ 
+/* ============================================================
+   INTRO
+   ============================================================ */
+#intro{
+  position:relative; height:100vh; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; text-align:center; z-index:2;
+}
+#intro-core-canvas{ position:absolute; inset:0; width:100%; height:100%; }
+#intro-text{ position:relative; z-index:2; }
+.wordmark{
+  font-family:var(--serif); font-weight:400; font-size:clamp(2.4rem,7vw,4.6rem);
+  letter-spacing:.02em; color:var(--ink-0);
+}
+.wordmark small{
+  display:block; font-family:var(--sans); font-size:.32em; font-weight:600;
+  letter-spacing:.28em; color:var(--fiber); margin-top:.6em;
+}
+.tagline{
+  margin-top:1.6em; font-size:.82rem; letter-spacing:.24em; color:var(--ink-2);
+  font-weight:500;
+}
+.scroll-cue{
+  margin-top:3.4em; font-size:.72rem; letter-spacing:.2em; color:var(--ink-2);
+  display:flex; flex-direction:column; align-items:center; gap:.6em;
+}
+.scroll-cue .stem{ width:1px; height:34px; background:linear-gradient(var(--fiber), transparent); animation:stemPulse calc(2.2s / var(--r-motion,1)) ease-in-out infinite; }
+@keyframes stemPulse{ 0%,100%{opacity:.25;} 50%{opacity:1;} }
+ 
+/* ============================================================
+   REVEAL / HERO
+   ============================================================ */
+ 
+#hero{
+  position:relative; z-index:2; min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; padding:6vh 6vw 10vh;
+}
+.hero-inner{ position:relative; z-index:2; max-width:920px; }
+.hero-kinetic{
+  font-family:var(--serif); font-weight:400; line-height:1.06;
+  font-size:clamp(2.1rem,6vw,4.2rem); color:var(--ink-0);
+}
+.hero-kinetic .line2{ color:var(--fiber); }
+.kchar{ display:inline-block; }
+.hero-sub{
+  margin:2em auto 0; max-width:560px; font-size:1.02rem; line-height:1.6; color:var(--ink-1);
+}
+.hero-actions{ margin-top:2.6em; display:flex; gap:1em; justify-content:center; flex-wrap:wrap; }
+.btn{
+  padding:.9em 1.6em; border-radius:2px; font-size:.82rem; letter-spacing:.06em; font-weight:600;
+  border:1px solid var(--panel-line); background:transparent; color:var(--ink-0);
+  transition:border-color .25s ease, transform .2s ease, box-shadow .25s ease;
+  position:relative; overflow:hidden;
+}
+.btn:hover{ border-color:var(--fiber); box-shadow:var(--accent-glow); transform:translateY(-1px); }
+.btn-primary{ background:var(--fiber); color:#04120f; border-color:var(--fiber); }
+.btn-primary:hover{ box-shadow:0 0 30px rgba(63,214,196,.5); }
+.btn-primary:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+.hero-scroll-note{ margin-top:3em; font-size:.7rem; letter-spacing:.2em; color:var(--ink-2); }
+ 
+/* ============================================================
+   NOC SHELL
+   ============================================================ */
+#noc{ position:relative; z-index:2; background:var(--bg-1); border-top:1px solid var(--panel-line); }
+.topbar{
+  position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
+  padding:.9em 1.6em; background:color-mix(in srgb, var(--bg-1) 88%, transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--panel-line);
+}
+.topbar-left{ display:flex; align-items:center; gap:1em; }
+.brand-mini{ font-family:var(--serif); font-size:1.05rem; letter-spacing:.02em; }
+.brand-mini b{ color:var(--fiber); font-weight:600; }
+.systime{ font-family:var(--mono); font-size:.76rem; color:var(--ink-2); letter-spacing:.03em; }
+.topbar-right{ display:flex; align-items:center; gap:.7em; }
+.theme-toggle{
+  width:38px; height:38px; border-radius:50%; border:1px solid var(--panel-line);
+  background:var(--panel); display:flex; align-items:center; justify-content:center; font-size:.9rem;
+  color:var(--ink-1); transition:border-color .2s ease;
+}
+.theme-toggle:hover{ border-color:var(--fiber); }
+ 
+/* command strip */
+#command-strip{
+  max-height:0; overflow:hidden; opacity:0; transition:max-height .5s ease, opacity .5s ease;
+  border-bottom:1px solid var(--panel-line);
+}
+#command-strip.active{ max-height:120px; opacity:1; }
+.strip-inner{
+  display:flex; gap:2.4em; flex-wrap:wrap; padding:.9em 1.6em; background:linear-gradient(90deg, rgba(239,91,91,.08), transparent 60%);
+  border-left:3px solid var(--crit);
+}
+.strip-item{ display:flex; flex-direction:column; gap:.15em; }
+.strip-label{ font-size:.62rem; letter-spacing:.16em; color:var(--ink-2); font-weight:600; }
+.strip-value{ font-family:var(--mono); font-size:.92rem; color:var(--ink-0); }
+.strip-value.sev1{ color:var(--crit); font-weight:700; }
+.strip-value.confidence{ color:var(--fiber); }
+ 
+/* layer switcher */
+.layer-switcher{
+  display:flex; gap:.45em; padding:.9em 1.4em; flex-wrap:wrap; border-bottom:1px solid var(--panel-line);
+  background:var(--bg-0);
+}
+.layer-chip{
+  padding:.58em 1em; border:1px solid var(--panel-line); background:var(--panel); color:var(--ink-1);
+  font-size:.68rem; letter-spacing:.09em; font-weight:700; border-radius:3px; transition:all .25s ease;
+  cursor:pointer;
+}
+.layer-chip.active{ color:var(--bg-0); background:var(--fiber); border-color:var(--fiber); }
+.layer-chip:hover:not(.active){ border-color:var(--fiber); color:var(--fiber); }
+.feature-chip{ border-color:rgba(95,180,255,.22); }
+.feature-chip.active{ background:var(--signal); border-color:var(--signal); color:#06111d; }
+.control-box{ min-width:178px; text-align:center; }
+ 
+/* Feature mode deliberately replaces the topology workspace. */
+.noc-grid.feature-hidden{ display:none; }
+.feature-stage{ display:none; background:var(--panel-line); }
+.feature-stage.feature-visible{ display:block; }
+.feature-panel{ min-height:460px; padding:1.8em 2em 2em; }
+.feature-panel.active{ display:block; }
+.feature-grid{ max-width:1320px; margin:0 auto; }
+.feature-head{ max-width:1320px; margin-left:auto; margin-right:auto; }
+.feature-status{ white-space:nowrap; }
+ 
+/* Feature stage */
+.feature-panel{ display:none; background:var(--panel); }
+.feature-panel.active{ display:block; animation:featureIn .35s ease; }
+@keyframes featureIn{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+.feature-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:1em; margin-bottom:1.15em; }
+.feature-head h2{ font-family:var(--serif); font-size:1.35rem; font-weight:400; margin-top:.18em; }
+.eyebrow,.metric-label{ display:block; font-family:var(--mono); font-size:.58rem; letter-spacing:.14em; color:var(--ink-2); font-weight:700; }
+.feature-status{ font-family:var(--mono); font-size:.62rem; color:var(--fiber); border:1px solid var(--fiber-dim); padding:.4em .65em; }
+.feature-grid{ display:grid; gap:1px; background:var(--panel-line); }
+.financial-grid{ grid-template-columns:1fr 1.35fr 1.25fr; }
+.predictive-grid{ grid-template-columns:1.25fr 1fr; }
+.metric-card{ background:var(--bg-1); padding:1em 1.1em; min-height:150px; }
+.chart-card{ position:relative; }
+.financial-chart{ width:100%; height:95px; display:block; margin-top:.65em; }
+.ai-explain-card{ border-left:2px solid var(--fiber); }
+.ai-badge{ display:inline-block; margin:.75em 0 .55em; padding:.28em .5em; border:1px solid var(--fiber-dim); color:var(--fiber); font-family:var(--mono); font-size:.55rem; letter-spacing:.1em; }
+#financial-ai-explanation{ color:var(--ink-1); font-size:.8rem; line-height:1.55; max-width:560px; }
+.mttr-card{ display:flex; flex-direction:column; justify-content:center; }
+.mttr-proof{ margin-top:.8em; color:var(--ink-2); font-size:.7rem; line-height:1.45; }
+ 
+/* Scrollable operational panels */
+#event-log{ height:220px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:.5em; scrollbar-gutter:stable; }
+.timeline{ max-height:220px; overflow-y:auto; padding-right:.45em; scrollbar-gutter:stable; }
+#runbook-body{ max-height:300px; overflow-y:auto; padding-right:.45em; scrollbar-gutter:stable; }
+ 
+/* Network Health — simple propagation flow */
+.health-simple{
+  max-width:1100px;
+  margin:0 auto;
+  background:var(--bg-1);
+  border:1px solid var(--panel-line);
+  padding:1.2em 1.35em 1.35em;
+}
+.health-flow-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1em;
+  margin-bottom:1.15em;
+  font-family:var(--mono);
+  font-size:.58rem;
+  letter-spacing:.12em;
+  color:var(--ink-2);
+}
+.health-legend{
+  display:flex;
+  align-items:center;
+  gap:.9em;
+  flex-wrap:wrap;
+  letter-spacing:.07em;
+}
+.health-legend i{
+  display:inline-block;
+  width:7px;height:7px;border-radius:50%;
+  margin-right:.25em;
+}
+.legend-ok{background:var(--ok)} .legend-warn{background:var(--amber)}
+.legend-crit{background:var(--crit)} .legend-rec{background:var(--signal)}
+.health-flow{display:flex;flex-direction:column;align-items:stretch}
+.health-row{
+  display:grid;
+  grid-template-columns:170px minmax(180px,1fr) 145px 110px;
+  align-items:center;
+  gap:1em;
+  min-height:70px;
+  padding:.75em .9em;
+  border:1px solid var(--panel-line);
+  background:var(--panel);
+  transition:border-color .35s ease, background .35s ease, transform .35s ease;
+}
+.health-row-title{
+  display:flex;align-items:center;gap:.7em;
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;font-weight:700;
+}
+.health-index{color:var(--ink-2);font-size:.55rem}
+.health-track{
+  height:10px;
+  background:var(--panel-line);
+  overflow:hidden;
+  border-radius:2px;
+}
+.health-fill{
+  width:100%;
+  height:100%;
+  background:var(--ok);
+  transition:width .5s ease,background .35s ease;
+}
+.health-row-state{
+  display:flex;align-items:center;gap:.45em;
+  font-family:var(--mono);font-size:.64rem;
+}
+.health-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--ok);box-shadow:0 0 8px var(--ok);
+  display:inline-block;
+}
+.health-score{
+  font-family:var(--mono);font-size:.58rem;
+  color:var(--ink-2);text-align:right;
+}
+.health-arrow{
+  height:18px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--ink-2);
+  font-family:var(--mono);
+  font-size:.8rem;
+}
+.health-row.state-critical{border-color:var(--crit);background:rgba(239,91,91,.07)}
+.health-row.state-critical .health-fill{background:var(--crit);width:20%}
+.health-row.state-critical .health-dot{background:var(--crit);box-shadow:0 0 8px var(--crit)}
+.health-row.state-degraded{border-color:var(--amber);background:rgba(242,169,59,.07)}
+.health-row.state-degraded .health-fill{background:var(--amber);width:55%}
+.health-row.state-degraded .health-dot{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.health-row.state-recovering{border-color:var(--signal);background:rgba(95,180,255,.07)}
+.health-row.state-recovering .health-fill{background:var(--signal);width:75%}
+.health-row.state-recovering .health-dot{background:var(--signal);box-shadow:0 0 8px var(--signal)}
+.health-summary{
+  margin-top:1em;
+  border-top:1px solid var(--panel-line);
+  padding-top:.9em;
+}
+.health-summary-label{
+  font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;color:var(--ink-2);
+}
+.health-summary p{margin-top:.35em;color:var(--ink-1);font-size:.76rem;line-height:1.5}
+@media (max-width:900px){
+  .health-row{grid-template-columns:1fr;gap:.5em}
+  .health-score{text-align:left}
+  .health-flow-head{align-items:flex-start;flex-direction:column}
+}
+ 
+/* main grid */
+.noc-grid{
+  display:grid; grid-template-columns:1fr 340px; gap:1px; background:var(--panel-line);
+}
+@media (max-width:980px){ .noc-grid{ grid-template-columns:1fr; } }
+ 
+.topo-wrap{ position:relative; background:var(--bg-1); min-height:640px; overflow:hidden; }
+#topo-map{ width:100%; height:640px; background:var(--bg-1); }
+.leaflet-container{ background:var(--bg-1) !important; font-family:var(--sans) !important; }
+/* OSM only ships one free, key-less tile style — invert it to fake a
+   dark basemap that matches the console theme; light mode is untouched. */
+[data-theme="dark"] #topo-map .leaflet-tile-pane{
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+}
+.topo-map-label{ position:absolute; left:18px; bottom:16px; z-index:600; font-family:var(--mono); font-size:.58rem; letter-spacing:.12em; color:var(--ink-2); background:rgba(6,10,16,.68); padding:.45em .65em; border:1px solid var(--panel-line); pointer-events:none; }
+[data-theme="light"] .topo-map-label{ background:rgba(255,255,255,.78); }
+ 
+/* Leaflet chrome restyled to match the console */
+.leaflet-control-zoom a{
+  background:var(--panel) !important; color:var(--ink-0) !important; border-color:var(--panel-line) !important;
+}
+.leaflet-control-zoom a:hover{ background:var(--bg-0) !important; color:var(--fiber) !important; }
+.leaflet-control-attribution{
+  background:rgba(6,10,16,.65) !important; color:var(--ink-2) !important; font-size:.6rem !important;
+}
+[data-theme="light"] .leaflet-control-attribution{ background:rgba(255,255,255,.75) !important; }
+.leaflet-control-attribution a{ color:var(--ink-1) !important; }
+ 
+/* Custom tooltip styling for node hover-cards */
+.noc-tooltip.leaflet-tooltip{
+  background:var(--panel) !important; border:1px solid var(--panel-line) !important; color:var(--ink-1) !important;
+  font-size:.72rem; line-height:1.5; padding:.7em .9em !important; border-radius:2px !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.35); opacity:1 !important;
+}
+.noc-tooltip .t-title{ font-family:var(--mono); color:var(--fiber); font-weight:700; margin-bottom:.35em; letter-spacing:.03em; display:block; }
+.noc-tooltip .t-row{ display:flex; justify-content:space-between; gap:1.2em; }
+.noc-tooltip .t-row b{ color:var(--ink-0); font-family:var(--mono); font-weight:500; }
+.leaflet-tooltip-top.noc-tooltip::before{ border-top-color:var(--panel-line) !important; }
+ 
+/* Gateway city label (LAX / LON / SIN etc.) */
+.gw-label-icon{ font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:.05em; white-space:nowrap; text-shadow:0 0 4px var(--bg-0),0 0 4px var(--bg-0); }
+.node-label-icon{ font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:.03em; white-space:nowrap; color:var(--ink-1); text-shadow:0 0 4px var(--bg-0),0 0 4px var(--bg-0); }
+ 
+.fiber-cut-icon{ color:var(--crit); font-family:var(--mono); font-weight:900; font-size:15px; line-height:1; text-shadow:0 0 8px var(--crit); }
+ 
+.sim-controls{
+  position:absolute; left:16px; top:16px; display:flex; gap:.55em; flex-wrap:wrap; z-index:650;
+}
+.sim-controls .control-box{ min-width:210px; height:38px; }
+.pill{
+  padding:.45em .9em; border-radius:20px; font-size:.66rem; letter-spacing:.1em; font-weight:600;
+  border:1px solid var(--panel-line); background:rgba(6,10,16,.6); color:var(--ink-1);
+}
+[data-theme="light"] .pill{ background:rgba(255,255,255,.7); }
+.pill.state-normal{ color:var(--ok); border-color:var(--ok); }
+.pill.state-alert{ color:var(--crit); border-color:var(--crit); }
+.pill.state-working{ color:var(--amber); border-color:var(--amber); }
+ 
+/* side column */
+.side-col{ display:flex; flex-direction:column; gap:1px; background:var(--panel-line); }
+.panel{ background:var(--panel); padding:1.1em 1.2em; }
+.panel h3{
+  font-size:.68rem; letter-spacing:.16em; color:var(--ink-2); font-weight:700; margin-bottom:.9em;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panel h3 .live-dot{ width:6px; height:6px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok); }
+ 
+#event-log{ height:220px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:.5em; }
+.log-row{ font-family:var(--mono); font-size:.72rem; line-height:1.4; display:flex; gap:.7em; color:var(--ink-1); animation:logIn .3s ease; }
+.log-row .t{ color:var(--ink-2); flex-shrink:0; }
+.log-row.sev-crit .m{ color:var(--crit); }
+.log-row.sev-warn .m{ color:var(--amber); }
+.log-row.sev-ok .m{ color:var(--ok); }
+.log-row.sev-info .m{ color:var(--ink-1); }
+@keyframes logIn{ from{ opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;} }
+ 
+.timeline{ display:flex; flex-direction:column; gap:.9em; }
+.tl-step{ display:flex; gap:.8em; opacity:.3; transition:opacity .4s ease; }
+.tl-step.done{ opacity:1; }
+.tl-dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-2); margin-top:.3em; flex-shrink:0; transition:background .3s ease, box-shadow .3s ease; }
+.tl-step.done .tl-dot{ background:var(--fiber); box-shadow:0 0 8px var(--fiber); }
+.tl-body .tl-t{ font-family:var(--mono); font-size:.66rem; color:var(--ink-2); }
+.tl-body .tl-l{ font-size:.78rem; color:var(--ink-0); margin-top:.1em; }
+ 
+.runbook-steps{ display:flex; flex-direction:column; gap:.6em; margin-bottom:1em; }
+.rb-step{ display:flex; gap:.7em; align-items:flex-start; font-size:.78rem; color:var(--ink-2); opacity:.4; transition:opacity .3s ease, color .3s ease; }
+.rb-step.active{ opacity:1; color:var(--ink-0); }
+.rb-step.complete{ opacity:1; color:var(--ok); }
+.rb-num{ font-family:var(--mono); font-size:.7rem; color:var(--ink-2); width:1.4em; flex-shrink:0; }
+.rb-actions{ display:flex; gap:.6em; }
+.rb-actions .btn{ flex:1; font-size:.68rem; padding:.7em .8em; }
+ 
+.impact-figure{ font-family:var(--mono); font-size:1.7rem; color:var(--crit); font-weight:600; letter-spacing:.01em; }
+.impact-figure.frozen{ color:var(--ok); }
+.impact-sub{ font-size:.68rem; color:var(--ink-2); letter-spacing:.05em; margin-top:.3em; }
+ 
+.mini-chart{ width:100%; height:60px; display:block; }
+ 
+.mttr-row{ display:flex; align-items:center; gap:.7em; margin-bottom:.6em; }
+.mttr-label{ width:76px; font-size:.66rem; color:var(--ink-2); letter-spacing:.06em; flex-shrink:0; }
+.mttr-bar-track{ flex:1; height:8px; background:var(--bg-2); position:relative; border-radius:1px; overflow:hidden; }
+.mttr-bar-fill{ height:100%; width:0%; transition:width 1.1s cubic-bezier(.2,.7,.2,1); }
+.mttr-bar-fill.manual{ background:var(--ink-2); }
+.mttr-bar-fill.ai{ background:var(--fiber); }
+.mttr-val{ width:52px; text-align:right; font-family:var(--mono); font-size:.7rem; color:var(--ink-1); }
+ 
+.health-band{ display:flex; height:10px; border-radius:1px; overflow:hidden; margin-top:.4em; }
+.health-seg{ flex:1; transition:background .4s ease; }
+.health-caption{ display:flex; justify-content:space-between; margin-top:.5em; font-size:.66rem; color:var(--ink-2); }
+ 
+.bottom-strip{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--panel-line); }
+@media (max-width:900px){ .bottom-strip{ grid-template-columns:repeat(2,1fr);} }
+.bottom-strip .panel{ min-height:170px; }
+ 
+footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem; letter-spacing:.08em; }
+ 
+.scrolled-hint{ position:relative; }
+::-webkit-scrollbar{ width:8px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--panel-line); border-radius:4px; }
+
+/* ============================================================
+   REQUESTED CINEMATIC LANDING DESIGN
+   ============================================================ */
+#intro{
+  position:relative;
+  height:100vh;
+  min-height:680px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background:var(--bg-0);
+}
+#intro-core-canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  pointer-events:none;
+}
+#intro-text{
+  position:relative;
+  z-index:5;
+  transform:translateY(-2vh);
+}
+.wordmark{
+  font-family:var(--serif);
+  font-weight:400;
+  font-size:clamp(3.8rem,8vw,7rem);
+  line-height:.95;
+  letter-spacing:.035em;
+}
+.wordmark small{
+  display:block;
+  margin-top:1.05em;
+  font-family:var(--sans);
+  font-size:clamp(.72rem,1.2vw,1.05rem);
+  font-weight:600;
+  letter-spacing:.38em;
+  color:var(--fiber);
+}
+.tagline{
+  margin-top:2.1em;
+  font-size:clamp(.65rem,1vw,.85rem);
+  letter-spacing:.32em;
+}
+.scroll-cue{
+  margin-top:5.4em;
+  font-size:.68rem;
+  letter-spacing:.25em;
+}
+.landing-orbit{
+  position:absolute;
+  left:50%;
+  top:43%;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(63,214,196,.08);
+  border-radius:50%;
+  pointer-events:none;
+  z-index:1;
+}
+.orbit-a{width:min(34vw,520px);height:min(34vw,520px);animation:orbitBreath 7s ease-in-out infinite}
+.orbit-b{width:min(55vw,850px);height:min(55vw,850px);animation:orbitBreath 10s ease-in-out infinite reverse}
+.orbit-c{width:min(76vw,1160px);height:min(76vw,1160px);animation:orbitBreath 14s ease-in-out infinite}
+@keyframes orbitBreath{
+  0%,100%{transform:translate(-50%,-50%) scale(.985) rotate(0deg);opacity:.4}
+  50%{transform:translate(-50%,-50%) scale(1.025) rotate(8deg);opacity:.9}
+}
+
+/* Screen 2 is intentionally clean: no growing node graph. */
+#hero{
+  position:relative;
+  z-index:2;
+  height:100vh;
+  min-height:680px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#05090f;
+  text-align:center;
+  padding:8vh 6vw;
+}
+#hero::before,#hero::after{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  width:70vw;height:70vw;
+  border:1px solid rgba(63,214,196,.03);
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+#hero::after{width:38vw;height:38vw;opacity:.7}
+.hero-inner{position:relative;z-index:3;max-width:1180px}
+.hero-kinetic{
+  font-family:var(--serif);
+  font-weight:400;
+  line-height:1.03;
+  font-size:clamp(3.3rem,7.1vw,7.2rem);
+  letter-spacing:-.025em;
+  color:#edf3f8;
+}
+.hero-kinetic .line2{color:#3fd6c4}
+.hero-sub{
+  margin:2.4em auto 0;
+  max-width:760px;
+  font-size:clamp(.95rem,1.4vw,1.2rem);
+  line-height:1.65;
+  color:#8eacc5;
+}
+.hero-actions{margin-top:2.9em}
+.btn-primary{
+  min-width:350px;
+  padding:1.05em 1.7em;
+  background:#3fd6c4;
+  color:#06120f;
+  border-color:#3fd6c4;
+  font-size:.9rem;
+  letter-spacing:.055em;
+}
+.hero-scroll-note{
+  margin-top:4.4em;
+  font-size:.68rem;
+  letter-spacing:.28em;
+  color:#5f7488;
+}
+@media (max-width:800px){
+  #intro,#hero{min-height:620px}
+  .wordmark{font-size:clamp(3rem,14vw,5rem)}
+  .wordmark small{letter-spacing:.22em}
+  .hero-kinetic{font-size:clamp(2.6rem,12vw,5rem)}
+  .hero-sub{max-width:90vw}
+  .btn-primary{min-width:0;width:min(90vw,350px)}
+}
+
+
+/* ============================================================
+   DASHBOARD REFINEMENTS
+   ============================================================ */
+
+/* Simulation controls live above the map, never on top of it. */
+.sim-toolbar{
+  display:flex;
+  align-items:center;
+  gap:.7em;
+  padding:1em 1.4em;
+  border-bottom:1px solid var(--panel-line);
+  background:var(--bg-0);
+}
+.sim-toolbar .control-box{
+  min-width:210px;
+  height:38px;
+}
+
+/* Full Financial Impact layout */
+.financial-grid{
+  grid-template-columns:repeat(3, 1fr);
+}
+.financial-grid .span-2{ grid-column:span 2; }
+.financial-grid .span-3{ grid-column:span 3; }
+
+.cost-rows{
+  display:flex;
+  flex-direction:column;
+  gap:.6em;
+  margin-top:.85em;
+}
+.cost-row{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:1em;
+}
+.cost-row span{
+  font-family:var(--mono);
+  font-size:.6rem;
+  letter-spacing:.1em;
+  color:var(--ink-2);
+}
+.cost-row b{
+  font-family:var(--mono);
+  font-size:.95rem;
+  color:var(--ink-0);
+  font-weight:600;
+}
+
+.breakdown-rows{
+  display:flex;
+  flex-direction:column;
+  gap:.65em;
+  margin-top:.85em;
+}
+.breakdown-row{
+  display:grid;
+  grid-template-columns:78px 1fr 70px;
+  align-items:center;
+  gap:.6em;
+}
+.bd-name{
+  font-family:var(--mono);
+  font-size:.58rem;
+  letter-spacing:.06em;
+  color:var(--ink-2);
+}
+.bd-track{
+  height:8px;
+  background:var(--bg-2);
+  border-radius:1px;
+  overflow:hidden;
+}
+.bd-fill{
+  height:100%;
+  width:0%;
+  background:var(--crit);
+  transition:width .6s ease;
+}
+.bd-val{
+  font-family:var(--mono);
+  font-size:.66rem;
+  color:var(--ink-1);
+  text-align:right;
+}
+.loss-avoided-card .impact-figure{ color:var(--ok); }
+.loss-avoided-card .impact-sub{
+  max-width:220px;
+  line-height:1.4;
+}
+
+/* Gemini explanation must use the same body typography as the rest
+   of the dashboard — no browser-default serif styling. */
+.health-ai{
+  max-width:1100px;
+  margin:1em auto 0;
+  padding-top:.9em;
+  border-top:1px solid var(--panel-line);
+}
+.health-ai-badge{
+  display:inline-block;
+  margin-bottom:.55em;
+  padding:.28em .5em;
+  border:1px solid var(--fiber-dim);
+  color:var(--fiber);
+  font-family:var(--mono);
+  font-size:.55rem;
+  letter-spacing:.1em;
+}
+.health-ai p{
+  margin:0;
+  font-family:var(--sans);
+  color:var(--ink-1);
+  font-size:.8rem;
+  line-height:1.55;
+  font-weight:400;
+  max-width:640px;
+}
+
+@media (max-width:900px){
+  .financial-grid{ grid-template-columns:1fr; }
+  .financial-grid .span-2,
+  .financial-grid .span-3{ grid-column:span 1; }
+}
+@media (max-width:700px){
+  .sim-toolbar{ flex-wrap:wrap; }
+  .sim-toolbar .control-box{
+    min-width:190px;
+    flex:1 1 190px;
+  }
+  .topbar-right{ gap:.4em; }
+  .topbar-right .pill{
+    font-size:.55rem;
+    padding:.4em .65em;
+  }
+}
+</style>
+</head>
+<body data-theme="dark">
+<div class="bg-grid"></div>
+<div id="theme-pulse"></div>
+ 
+<!-- ============ SCREEN 1 : CINEMATIC LANDING ============ -->
+<section id="intro" aria-label="BharatNet introduction">
+  <canvas id="intro-core-canvas" aria-hidden="true"></canvas>
+  <div class="landing-orbit orbit-a" aria-hidden="true"></div>
+  <div class="landing-orbit orbit-b" aria-hidden="true"></div>
+  <div class="landing-orbit orbit-c" aria-hidden="true"></div>
+
+  <div id="intro-text">
+    <h1 class="wordmark">
+      BHARATNET
+      <small>AIOps NOC COMMANDER</small>
+    </h1>
+    <p class="tagline">AUTONOMOUS NETWORK INTELLIGENCE</p>
+    <div class="scroll-cue">
+      <span class="stem"></span>
+      <span>SCROLL TO ENTER</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2 : VALUE PROPOSITION ============ -->
+<section id="hero">
+  <div class="hero-inner">
+    <h2 class="hero-kinetic" id="hero-kinetic">
+      <span class="line1" data-final="FROM ALERT CHAOS"></span><br>
+      <span class="line2" data-final="TO ONE ROOT CAUSE"></span>
+    </h2>
+    <p class="hero-sub">Turn thousands of noisy network alerts into one explainable incident — identify the root cause, understand the blast radius, and accelerate recovery.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" id="enter-noc-btn">Enter NOC Command Center</button>
+    </div>
+    <p class="hero-scroll-note">SCROLL FOR THE LIVE NETWORK</p>
+  </div>
+</section>
+
+<!-- ============ NOC ============ -->
+<section id="noc">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="brand-mini"><b>BharatNet</b> NOC</span>
+      <span class="systime" id="systime">20:41:08 IST</span>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" id="net-health-pill">NETWORK HEALTHY</span>
+      <span class="pill state-normal" id="state-pill">NORMAL OPERATIONS</span>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">◐</button>
+    </div>
+  </div>
+ 
+  <div id="command-strip">
+    <div class="strip-inner">
+      <div class="strip-item"><span class="strip-label">SEVERITY</span><span class="strip-value sev1" id="cs-sev">SEV-1</span></div>
+      <div class="strip-item"><span class="strip-label">INCIDENT</span><span class="strip-value" id="cs-incident">MUMBAI FIBER CUT</span></div>
+      <div class="strip-item"><span class="strip-label">ROOT CAUSE</span><span class="strip-value" id="cs-rootcause">—</span></div>
+      <div class="strip-item"><span class="strip-label">CONFIDENCE</span><span class="strip-value confidence" id="cs-confidence">—</span></div>
+      <div class="strip-item"><span class="strip-label">AFFECTED</span><span class="strip-value" id="cs-affected">—</span></div>
+      <div class="strip-item"><span class="strip-label">IMPACT</span><span class="strip-value" id="cs-impact">—</span></div>
+    </div>
+  </div>
+ 
+  <div class="layer-switcher" id="layer-switcher">
+    <button class="layer-chip active" data-layer="all">FULL TOPOLOGY</button>
+    <button class="layer-chip" data-layer="network">NETWORK</button>
+    <button class="layer-chip" data-layer="customer">CUSTOMER IMPACT</button>
+    <button class="layer-chip feature-chip" data-feature="financial">FINANCIAL IMPACT</button>
+    <button class="layer-chip feature-chip" data-feature="predictive">PREDICTIVE / MTTR</button>
+    <button class="layer-chip feature-chip" data-feature="health">NETWORK HEALTH</button>
+  </div>
+ 
+  <div class="sim-toolbar">
+    <button class="control-box btn btn-primary" id="sim-btn">SIMULATE MUMBAI FIBER CUT</button>
+    <button class="control-box btn" id="reset-btn">RESET NETWORK</button>
+  </div>
+ 
+  <div class="noc-grid">
+    <div class="topo-wrap">
+      <div id="topo-map"></div>
+      <div class="topo-map-label">LIVE NETWORK MAP · MUMBAI, INDIA · SYNTHETIC TELEMETRY OVER REAL GEOGRAPHY</div>
+    </div>
+ 
+    <div class="side-col">
+      <div class="panel">
+        <h3>NETWORK EVENT LOG <span class="live-dot"></span></h3>
+        <div id="event-log"></div>
+      </div>
+      <div class="panel">
+        <h3>ESCALATION TIMELINE</h3>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <div class="panel">
+        <h3>RUNBOOK</h3>
+        <div id="runbook-body">
+          <p style="font-size:.76rem; color:var(--ink-2);">No active runbook. Awaiting root cause.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="feature-stage" id="feature-stage">
+    <section class="feature-panel" data-feature-panel="financial">
+      <div class="feature-head">
+        <div><span class="eyebrow">BUSINESS INTELLIGENCE</span><h2>FINANCIAL IMPACT</h2></div>
+        <span class="feature-status" id="financial-status">MONITORING</span>
+      </div>
+      <div class="feature-grid financial-grid">
+        <div class="metric-card">
+          <span class="metric-label">LIVE IMPACT RATE</span>
+          <div class="impact-figure frozen" id="impact-figure">₹0/sec</div>
+          <div class="impact-sub" id="impact-sub">No revenue-impacting incident</div>
+        </div>
+        <div class="metric-card chart-card span-2">
+          <span class="metric-label">IMPACT OVER TIME</span>
+          <canvas class="financial-chart" id="financial-chart"></canvas>
+        </div>
+
+        <div class="metric-card outage-cost-card">
+          <span class="metric-label">OUTAGE COST</span>
+          <div class="cost-rows">
+            <div class="cost-row"><span>PER SECOND</span><b id="cost-sec">₹0</b></div>
+            <div class="cost-row"><span>PER MINUTE</span><b id="cost-min">₹0</b></div>
+            <div class="cost-row"><span>PER 10 MINUTES</span><b id="cost-10min">₹0</b></div>
+          </div>
+        </div>
+        <div class="metric-card breakdown-card">
+          <span class="metric-label">SERVICE BREAKDOWN</span>
+          <div class="breakdown-rows" id="service-breakdown">
+            <div class="breakdown-row" data-svc="payments"><span class="bd-name">PAYMENTS</span><div class="bd-track"><div class="bd-fill"></div></div><span class="bd-val">₹0</span></div>
+            <div class="breakdown-row" data-svc="enterprise"><span class="bd-name">ENTERPRISE</span><div class="bd-track"><div class="bd-fill"></div></div><span class="bd-val">₹0</span></div>
+            <div class="breakdown-row" data-svc="retail"><span class="bd-name">RETAIL</span><div class="bd-track"><div class="bd-fill"></div></div><span class="bd-val">₹0</span></div>
+            <div class="breakdown-row" data-svc="iot"><span class="bd-name">IOT / M2M</span><div class="bd-track"><div class="bd-fill"></div></div><span class="bd-val">₹0</span></div>
+          </div>
+        </div>
+        <div class="metric-card loss-avoided-card">
+          <span class="metric-label">LOSS AVOIDED</span>
+          <div class="impact-figure frozen" id="loss-avoided-figure">₹0</div>
+          <div class="impact-sub" id="loss-avoided-sub">Estimated savings from AI-assisted vs manual recovery</div>
+        </div>
+
+        <div class="metric-card ai-explain-card span-3">
+          <span class="metric-label">AI IMPACT EXPLANATION</span>
+          <div class="ai-badge">AI EXPLANATION</div>
+          <p id="financial-ai-explanation">No active incident. Financial exposure is currently zero because affected services are operating normally.</p>
+        </div>
+      </div>
+    </section>
+ 
+    <section class="feature-panel" data-feature-panel="predictive">
+      <div class="feature-head">
+        <div><span class="eyebrow">PERFORMANCE INTELLIGENCE</span><h2>PREDICTIVE FAILURE + MTTR</h2></div>
+        <span class="feature-status">ER-MUM-01</span>
+      </div>
+      <div class="feature-grid predictive-grid">
+        <div class="metric-card predictive-card">
+          <span class="metric-label">PREDICTIVE FAILURE — ER-MUM-01 OPTICAL POWER</span>
+          <canvas class="mini-chart" id="predictive-chart"></canvas>
+          <div class="impact-sub" id="predictive-caption">Signal nominal</div>
+        </div>
+        <div class="metric-card mttr-card">
+          <span class="metric-label">MTTR — MANUAL vs AI-ASSISTED</span>
+          <div class="mttr-row"><span class="mttr-label">MANUAL</span><div class="mttr-bar-track"><div class="mttr-bar-fill manual" id="mttr-manual"></div></div><span class="mttr-val" id="mttr-manual-val">—</span></div>
+          <div class="mttr-row"><span class="mttr-label">AI-ASSISTED</span><div class="mttr-bar-track"><div class="mttr-bar-fill ai" id="mttr-ai"></div></div><span class="mttr-val" id="mttr-ai-val">—</span></div>
+          <div class="mttr-proof" id="mttr-proof">AI-assisted recovery is expected to reduce time-to-repair once the incident is correlated.</div>
+        </div>
+      </div>
+      <div class="health-ai"><span class="health-ai-badge">GEMINI EXPLANATION</span><p id="predictive-ai-explanation">Optical power is nominal. The predictive model is watching for drift toward the failure threshold.</p></div>
+    </section>
+ 
+    <section class="feature-panel" data-feature-panel="health">
+      <div class="feature-head">
+        <div><span class="eyebrow">PROPAGATION INTELLIGENCE</span><h2>NETWORK HEALTH</h2></div>
+        <span class="feature-status" id="health-feature-status">ALL SYSTEMS NOMINAL</span>
+      </div>
+ 
+      <div class="health-simple">
+        <div class="health-flow-head">
+          <span>FAILURE PROPAGATION</span>
+          <span class="health-legend">
+            <i class="legend-ok"></i> HEALTHY
+            <i class="legend-warn"></i> DEGRADED
+            <i class="legend-crit"></i> CRITICAL
+            <i class="legend-rec"></i> RECOVERING
+          </span>
+        </div>
+ 
+        <div class="health-flow" id="health-ladder">
+          <div class="health-row health-physical">
+            <div class="health-row-title"><span class="health-index">01</span><span>PHYSICAL</span></div>
+            <div class="health-track"><div class="health-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot"></i><b id="health-physical-state">HEALTHY</b></div>
+            <div class="health-score" id="health-physical-score">100% nominal</div>
+          </div>
+ 
+          <div class="health-arrow">↓</div>
+ 
+          <div class="health-row health-network">
+            <div class="health-row-title"><span class="health-index">02</span><span>NETWORK</span></div>
+            <div class="health-track"><div class="health-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot"></i><b id="health-network-state">HEALTHY</b></div>
+            <div class="health-score" id="health-network-score">100% nominal</div>
+          </div>
+ 
+          <div class="health-arrow">↓</div>
+ 
+          <div class="health-row health-access">
+            <div class="health-row-title"><span class="health-index">03</span><span>ACCESS / RAN</span></div>
+            <div class="health-track"><div class="health-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot"></i><b id="health-access-state">HEALTHY</b></div>
+            <div class="health-score" id="health-access-score">100% nominal</div>
+          </div>
+ 
+          <div class="health-arrow">↓</div>
+ 
+          <div class="health-row health-service">
+            <div class="health-row-title"><span class="health-index">04</span><span>SERVICES</span></div>
+            <div class="health-track"><div class="health-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot"></i><b id="health-service-state">HEALTHY</b></div>
+            <div class="health-score" id="health-service-score">100% nominal</div>
+          </div>
+ 
+          <div class="health-arrow">↓</div>
+ 
+          <div class="health-row health-customer">
+            <div class="health-row-title"><span class="health-index">05</span><span>CUSTOMER IMPACT</span></div>
+            <div class="health-track"><div class="health-fill"></div></div>
+            <div class="health-row-state"><i class="health-dot"></i><b id="health-customer-state">HEALTHY</b></div>
+            <div class="health-score" id="health-customer-score">100% nominal</div>
+          </div>
+        </div>
+ 
+        <div class="health-summary">
+          <span class="health-summary-label">WHAT THE SYSTEM SEES</span>
+          <p id="health-explanation">All monitored layers are nominal. No downstream propagation is detected.</p>
+        </div>
+      </div>
+ 
+      <div class="health-ai">
+        <span class="health-ai-badge">GEMINI EXPLANATION</span>
+        <p id="health-ai-explanation">No active incident. All monitored layers are operating within normal conditions.</p>
+      </div>
+    </section>
+  </div>
+ 
+  <footer>BHARATNET AIOPS NOC COMMANDER — SIMULATED TELEMETRY, ILLUSTRATIVE PROTOTYPE</footer>
+</section>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ==================================================================
+   0. GLOBAL STATE MACHINE
+   ================================================================== */
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ 
+const SIM = {
+  phase: 'normal', // normal, storm, correlating, rootcause, rerouting, runbook, recovering, healthy
+  activeLayer: 'all',
+  blastSet: new Set(),
+  rootCauseId: 'FIB-MUM-A',
+  confidence: 0,
+  financialRate: 0,
+  financialTotal: 0,
+  frozen: true,
+  runbookStep: -1,
+  startClock: 8*3600+41*60+8, // 20:41:08 in seconds from midnight for display purposes
+  clockOffset: 0,
+};
+ 
+function setPhase(p){
+  SIM.phase = p;
+  document.body.dataset.phase = p;
+  updateStatePill();
+  updateHealthPill();
+  renderMapState();
+}
+ 
+function updateStatePill(){
+  const el = document.getElementById('state-pill');
+  const map = {
+    normal:['NORMAL OPERATIONS','state-normal'],
+    storm:['ALERT STORM','state-alert'],
+    correlating:['CORRELATING SIGNALS','state-working'],
+    rootcause:['ROOT CAUSE IDENTIFIED','state-working'],
+    rerouting:['DYNAMIC REROUTING','state-working'],
+    runbook:['RUNBOOK IN PROGRESS','state-working'],
+    recovering:['RECOVERING','state-working'],
+    healthy:['NETWORK RESTORED','state-normal'],
+  };
+  const [txt,cls] = map[SIM.phase] || map.normal;
+  el.textContent = txt;
+  el.className = 'pill ' + cls;
+}
+ 
+function updateHealthPill(){
+  const el = document.getElementById('net-health-pill');
+  if(SIM.phase==='normal' || SIM.phase==='healthy'){ el.textContent='NETWORK HEALTHY'; el.style.color='var(--ok)'; el.style.borderColor='var(--ok)'; }
+  else if(SIM.phase==='storm' || SIM.phase==='rootcause'){ el.textContent='NETWORK CRITICAL'; el.style.color='var(--crit)'; el.style.borderColor='var(--crit)'; }
+  else { el.textContent='NETWORK DEGRADED'; el.style.color='var(--amber)'; el.style.borderColor='var(--amber)'; }
+}
+ 
+/* ==================================================================
+   1. NETWORK TOPOLOGY DATA MODEL
+   ================================================================== */
+const LAYERS = ['PHYSICAL FIBER','CORE ROUTERS','AGGREGATION','ACCESS / RAN','SERVICES','CUSTOMER IMPACT'];
+const SWITCH_GROUPS = { all:null, network:[1,2,3], customer:[4,5] };
+ 
+const NODES = [
+  {id:'FIB-MUM-A', label:'FIBER-MUM-A', layer:0, kind:'fiber'},
+  {id:'FIB-MUM-B', label:'FIBER-MUM-B', layer:0, kind:'fiber'},
+  {id:'FIB-PUN-A', label:'FIBER-PUN-A', layer:0, kind:'fiber'},
+  {id:'CR-MUM-01', label:'CR-MUM-01', layer:1, kind:'router'},
+  {id:'CR-MUM-02', label:'CR-MUM-02', layer:1, kind:'router'},
+  {id:'CS-MUM-01', label:'CS-MUM-01', layer:2, kind:'switch'},
+  {id:'CS-MUM-02', label:'CS-MUM-02', layer:2, kind:'switch'},
+  {id:'ER-MUM-01', label:'ER-MUM-01', layer:3, kind:'edge'},
+  {id:'BSC-MUM-01', label:'BSC-MUM-01', layer:3, kind:'bsc'},
+  {id:'RNC-MUM-01', label:'RNC-MUM-01', layer:3, kind:'rnc'},
+  {id:'BTS-MUM-014', label:'BTS-MUM-014', layer:3, kind:'bts'},
+  {id:'BTS-MUM-022', label:'BTS-MUM-022', layer:3, kind:'bts'},
+  {id:'DNS-SVC', label:'DNS', layer:4, kind:'svc'},
+  {id:'AUTH-SVC', label:'AUTH', layer:4, kind:'svc'},
+  {id:'PAY-SVC', label:'PAYMENTS', layer:4, kind:'svc'},
+  {id:'CUST-RETAIL', label:'RETAIL SUBSCRIBERS', layer:5, kind:'cust'},
+  {id:'CUST-ENT', label:'ENTERPRISE CUSTOMERS', layer:5, kind:'cust'},
+  {id:'CUST-IOT', label:'IOT / M2M', layer:5, kind:'cust'},
+];
+ 
+const LINKS = [
+  ['FIB-MUM-A','CR-MUM-01'], ['FIB-MUM-B','CR-MUM-02'], ['FIB-PUN-A','CR-MUM-02'],
+  ['CR-MUM-01','CS-MUM-01'], ['CR-MUM-01','CS-MUM-02'], ['CR-MUM-02','CS-MUM-02'],
+  ['CS-MUM-01','ER-MUM-01'], ['CS-MUM-01','BSC-MUM-01'], ['CS-MUM-02','RNC-MUM-01'],
+  ['BSC-MUM-01','BTS-MUM-014'], ['RNC-MUM-01','BTS-MUM-022'],
+  ['ER-MUM-01','DNS-SVC'], ['ER-MUM-01','AUTH-SVC'], ['CS-MUM-02','PAY-SVC'],
+  ['DNS-SVC','CUST-RETAIL'], ['AUTH-SVC','CUST-RETAIL'], ['AUTH-SVC','CUST-ENT'],
+  ['PAY-SVC','CUST-ENT'], ['BTS-MUM-014','CUST-RETAIL'], ['BTS-MUM-022','CUST-IOT'],
+];
+ 
+// dependency chain used for blast radius / evidence convergence, rooted at FIB-MUM-A
+const DEPENDENCY_CHAIN = ['FIB-MUM-A','CR-MUM-01','CS-MUM-01','CS-MUM-02','ER-MUM-01','BSC-MUM-01','BTS-MUM-014','DNS-SVC','AUTH-SVC','CUST-RETAIL'];
+ 
+NODES.forEach(n=>{ n.status='healthy'; n.pulse=Math.random()*Math.PI*2; n.affected=false; });
+const nodeById = Object.fromEntries(NODES.map(n=>[n.id,n]));
+ 
+/* ==================================================================
+   1B. REAL-WORLD COORDINATES (lat, lng)
+   Mumbai / Thane / Pune metro locations stand in for each network
+   node so the map is a genuine, zoomable OpenStreetMap-based view —
+   zoom out for India, zoom in for wards, streets and villages.
+   ================================================================== */
+const NODE_COORDS = {
+  'FIB-MUM-A'   : [18.9388, 72.8354],  // Colaba — cable landing station
+  'FIB-MUM-B'   : [19.0596, 72.8656],  // Bandra Kurla Complex
+  'FIB-PUN-A'   : [18.5204, 73.8567],  // Pune
+  'CR-MUM-01'   : [19.0176, 72.8562],  // Fort, South Mumbai
+  'CR-MUM-02'   : [19.2183, 72.9781],  // Thane
+  'CS-MUM-01'   : [18.9982, 72.8199],  // Worli
+  'CS-MUM-02'   : [19.1728, 72.9425],  // Mulund
+  'ER-MUM-01'   : [19.0176, 72.8438],  // Lower Parel
+  'BSC-MUM-01'  : [19.0330, 72.8397],  // Parel
+  'RNC-MUM-01'  : [19.1943, 72.9700],  // Thane East
+  'BTS-MUM-014' : [18.9067, 72.8147],  // Colaba tower
+  'BTS-MUM-022' : [19.2403, 73.1305],  // Kalyan
+  'DNS-SVC'     : [19.0033, 72.8296],  // Worli data center
+  'AUTH-SVC'    : [19.0122, 72.8305],  // Lower Parel data center
+  'PAY-SVC'     : [19.1663, 72.9370],  // Bhandup data center
+  'CUST-RETAIL' : [19.0760, 72.8777],  // Mumbai central
+  'CUST-ENT'    : [19.0662, 72.8697],  // BKC business district
+  'CUST-IOT'    : [19.2403, 73.1305],  // Kalyan industrial belt
+};
+ 
+const GATEWAYS = {
+  LAX:[33.9416,-118.4085], NYC:[40.7128,-74.0060], LON:[51.5074,-0.1278],
+  DXB:[25.2048,55.2708], SIN:[1.3521,103.8198], SYD:[-33.8688,151.2093]
+};
+ 
+// international backbone routes, always shown as subtle context (like a submarine-cable map)
+const INTL_ROUTES = [
+  ['LAX','NYC'], ['NYC','LON'], ['LON','DXB'], ['DXB','SIN'], ['SIN','SYD'],
+  ['NYC','CR-MUM-01'], ['LON','CR-MUM-02'], ['DXB','CR-MUM-02']
+];
+ 
+function coordOf(id){ return NODE_COORDS[id] || GATEWAYS[id]; }
+ 
+/* ==================================================================
+   2. COLOR HELPERS
+   ================================================================== */
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function statusColor(status){
+  switch(status){
+    case 'critical': return getCss('--crit');
+    case 'degraded': return getCss('--amber');
+    case 'recovering': return getCss('--signal');
+    case 'suppressed': return getCss('--ink-2');
+    default: return getCss('--fiber');
+  }
+}
+ 
+/* ==================================================================
+   3. LEAFLET MAP — real, zoomable basemap (plain OpenStreetMap tiles,
+   no API key required). Zoom out to see India / the world; zoom in
+   on Mumbai to see wards, streets and neighbourhoods, just like any
+   standard web map. Dark mode is a CSS filter over the same tiles
+   (OSM only publishes one style for free, key-less use) — see the
+   [data-theme="dark"] #topo-map .leaflet-tile-pane rule in <style>.
+   ================================================================== */
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+ 
+const map = L.map('topo-map', {
+  center: [19.09, 72.90],
+  zoom: 10,
+  minZoom: 2,
+  maxZoom: 19,
+  zoomControl: true,
+  attributionControl: true,
+  worldCopyJump: true
+});
+ 
+const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19, subdomains: 'abc' }).addTo(map);
+tileLayer.on('tileerror', (e)=> console.error('Tile load error:', e));
+function setMapTheme(theme){ /* handled entirely via CSS, kept as a hook for future tile providers */ }
+ 
+function resyncMap(){ map.invalidateSize(); }
+window.addEventListener('load', ()=>{ setTimeout(resyncMap, 50); setTimeout(resyncMap, 400); });
+requestAnimationFrame(()=> requestAnimationFrame(resyncMap));
+if('IntersectionObserver' in window){
+  const nocObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{ if(entry.isIntersecting) resyncMap(); });
+  }, { threshold: 0.05 });
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const nocEl = document.getElementById('noc');
+    if(nocEl) nocObserver.observe(nocEl);
+  });
+}
+if('ResizeObserver' in window){
+  const roMap = new ResizeObserver(()=> resyncMap());
+  roMap.observe(document.getElementById('topo-map'));
+}
+ 
+// ---- internal BharatNet links (Mumbai/Pune metro) ----
+const linkLines = {};
+LINKS.forEach(([a,b])=>{
+  const line = L.polyline([coordOf(a), coordOf(b)], {
+    color: getCss('--panel-line'), weight: 2, opacity: .75
+  }).addTo(map);
+  linkLines[a+'|'+b] = { line, a, b };
+});
+ 
+// ---- international backbone (subtle, always-on context) ----
+const intlLines = INTL_ROUTES.map(([a,b])=>{
+  return L.polyline([coordOf(a), coordOf(b)], {
+    color: getCss('--amber'), weight: 1.3, opacity: .5, dashArray: '4,6'
+  }).addTo(map);
+});
+ 
+// ---- gateway city markers (LAX / NYC / LON / DXB / SIN / SYD) ----
+Object.entries(GATEWAYS).forEach(([name, latlng])=>{
+  L.circleMarker(latlng, {
+    radius: 5, color: getCss('--ok'), weight: 1.2, fillColor: getCss('--ok'), fillOpacity: .9
+  }).addTo(map);
+  L.marker(latlng, {
+    icon: L.divIcon({ className:'gw-label-icon', html:`<span style="color:${getCss('--ink-1')}">${name}</span>`, iconAnchor:[-8,4] }),
+    interactive: false
+  }).addTo(map);
+});
+ 
+// ---- node markers ----
+NODES.forEach(n=>{
+  const latlng = coordOf(n.id);
+  const r = n.kind==='fiber' ? 6 : (n.kind==='cust' ? 8 : 7);
+  n.marker = L.circleMarker(latlng, {
+    radius: r, color: statusColor(n.status), weight: 2,
+    fillColor: statusColor(n.status), fillOpacity: .85
+  }).addTo(map);
+  n.marker.bindTooltip('', { className:'noc-tooltip', direction:'top', offset:[0,-8], sticky:false });
+  n.labelMarker = L.marker(latlng, {
+    icon: L.divIcon({ className:'node-label-icon', html:n.label, iconAnchor:[-10,-4] }),
+    interactive: false
+  }).addTo(map);
+});
+ 
+function tooltipHtml(n){
+  const traffic = n.status==='critical' ? '0 Gbps' : (2+Math.random()*3).toFixed(1)+' Gbps';
+  const latency = n.status==='critical' ? '—' : (8+Math.random()*10).toFixed(0)+'ms';
+  const alerts = n.status==='critical'?3+Math.floor(Math.random()*4):n.status==='degraded'?1:0;
+  return `<span class="t-title">${n.label}</span>
+    <div class="t-row"><span>STATUS</span><b>${n.status.toUpperCase()}</b></div>
+    <div class="t-row"><span>LATENCY</span><b>${latency}</b></div>
+    <div class="t-row"><span>TRAFFIC</span><b>${traffic}</b></div>
+    <div class="t-row"><span>ALERTS</span><b>${alerts}</b></div>`;
+}
+ 
+function updateNodeMarker(n){
+  const col = statusColor(n.status);
+  n.marker.setStyle({ color: col, fillColor: col, fillOpacity: n.status==='critical'?0.95:0.85 });
+  n.marker.setTooltipContent(tooltipHtml(n));
+}
+NODES.forEach(updateNodeMarker);
+ 
+function linkStatus(a,b){
+  const na = nodeById[a], nb = nodeById[b];
+  if(na.status==='critical' && nb.status==='critical') return 'critical';
+  if(na.status==='critical' || nb.status==='critical') return 'degraded';
+  if(na.status==='degraded' || nb.status==='degraded') return 'degraded';
+  if(na.status==='recovering' || nb.status==='recovering') return 'recovering';
+  return 'healthy';
+}
+function updateLinkLine(key){
+  const { line, a, b } = linkLines[key];
+  const isRoot = (a==='FIB-MUM-A'||b==='FIB-MUM-A') && SIM.phase!=='normal' && SIM.phase!=='healthy';
+  const st = linkStatus(a,b);
+  if(isRoot && (SIM.phase==='storm'||SIM.phase==='correlating'||SIM.phase==='rootcause')){
+    line.setStyle({ color:getCss('--crit'), weight:3.5, opacity:.95, dashArray:null });
+  } else if(st==='degraded'){
+    line.setStyle({ color:getCss('--amber'), weight:2.5, opacity:.85, dashArray:null });
+  } else if(st==='recovering'){
+    line.setStyle({ color:getCss('--signal'), weight:2.5, opacity:.9, dashArray:null });
+  } else {
+    line.setStyle({ color:getCss('--panel-line'), weight:2, opacity:.7, dashArray:null });
+  }
+}
+function updateAllLinks(){ Object.keys(linkLines).forEach(updateLinkLine); }
+ 
+// ---- fiber-cut marker (X) shown mid-span while the link is down ----
+let fiberCutMarker = null;
+function showFiberCut(show){
+  if(fiberCutMarker){ map.removeLayer(fiberCutMarker); fiberCutMarker=null; }
+  if(!show) return;
+  const a = coordOf('FIB-MUM-A'), b = coordOf('CR-MUM-01');
+  const mid = [(a[0]+b[0])/2, (a[1]+b[1])/2];
+  fiberCutMarker = L.marker(mid, {
+    icon: L.divIcon({ className:'fiber-cut-icon', html:'✕ FIBER CUT', iconSize:[80,16], iconAnchor:[40,8] }),
+    interactive:false
+  }).addTo(map);
+}
+ 
+// ---- alternate reroute path (CR-MUM-02 -> CS-MUM-02 -> ER-MUM-01) ----
+let rerouteLine = null;
+function showReroute(show){
+  if(rerouteLine){ map.removeLayer(rerouteLine); rerouteLine=null; }
+  if(!show) return;
+  rerouteLine = L.polyline([coordOf('CR-MUM-02'), coordOf('CS-MUM-02'), coordOf('ER-MUM-01')], {
+    color: getCss('--signal'), weight: 3, opacity: .95, dashArray:'1,0'
+  }).addTo(map);
+}
+ 
+// ---- evidence convergence lines during root-cause correlation ----
+let evidenceLines = [];
+function showEvidence(show){
+  evidenceLines.forEach(l=>map.removeLayer(l));
+  evidenceLines = [];
+  if(!show) return;
+  const target = coordOf(SIM.rootCauseId);
+  ['CR-MUM-01','CS-MUM-01','CS-MUM-02','ER-MUM-01'].forEach(id=>{
+    evidenceLines.push(L.polyline([coordOf(id), target], {
+      color: getCss('--fiber'), weight: 1.4, opacity: .55, dashArray:'2,4'
+    }).addTo(map));
+  });
+}
+ 
+// ---- layer-group dimming (FULL TOPOLOGY / NETWORK / CUSTOMER IMPACT) ----
+function applyLayerDim(){
+  const activeGroup = SWITCH_GROUPS[SIM.activeLayer] || null;
+  NODES.forEach(n=>{
+    const dim = activeGroup && !activeGroup.includes(n.layer);
+    n.marker.setStyle({ opacity: dim?0.15:1, fillOpacity: dim?0.1:(n.status==='critical'?0.95:0.85) });
+    if(n.labelMarker && n.labelMarker._icon) n.labelMarker._icon.style.opacity = dim?0.15:1;
+  });
+  Object.values(linkLines).forEach(({line,a,b})=>{
+    const na=nodeById[a], nb=nodeById[b];
+    const dim = activeGroup && !(activeGroup.includes(na.layer) && activeGroup.includes(nb.layer));
+    line.setStyle({ opacity: dim?0.06:line.options.opacity });
+  });
+}
+ 
+// ---- packet animation along links (skips the severed link) ----
+const packetMarkers = [];
+LINKS.forEach(([a,b])=>{
+  [0.1,0.45,0.8].forEach(t0=>{
+    const m = L.circleMarker(coordOf(a), { radius:2, weight:0, fillColor:getCss('--signal'), fillOpacity:.85 });
+    packetMarkers.push({ a, b, t:t0, speed:0.00035+Math.random()*0.00015, marker:m, added:false });
+  });
+});
+function lerp(p1,p2,t){ return [p1[0]+(p2[0]-p1[0])*t, p1[1]+(p2[1]-p1[1])*t]; }
+function animatePackets(dt){
+  packetMarkers.forEach(p=>{
+    const blocked = p.a==='FIB-MUM-A' && (SIM.phase==='storm'||SIM.phase==='correlating'||SIM.phase==='rootcause');
+    if(blocked){
+      if(p.added){ map.removeLayer(p.marker); p.added=false; }
+      return;
+    }
+    if(!p.added){ p.marker.addTo(map); p.added=true; }
+    if(!REDUCED_MOTION){ p.t += p.speed*dt; if(p.t>1) p.t=0; }
+    p.marker.setLatLng(lerp(coordOf(p.a), coordOf(p.b), p.t));
+  });
+}
+let lastFrame = performance.now();
+function frameLoop(now){
+  const dt = now-lastFrame; lastFrame = now;
+  animatePackets(dt);
+  requestAnimationFrame(frameLoop);
+}
+requestAnimationFrame(frameLoop);
+ 
+/* ==================================================================
+   4. FULL MAP STATE REFRESH — called on phase/theme/layer changes
+   ================================================================== */
+function renderMapState(){
+  NODES.forEach(updateNodeMarker);
+  updateAllLinks();
+  applyLayerDim();
+  showFiberCut(SIM.phase==='storm'||SIM.phase==='correlating'||SIM.phase==='rootcause');
+  showEvidence(SIM.phase==='rootcause');
+  showReroute(['rerouting','runbook','recovering','healthy'].includes(SIM.phase));
+  updateFinancialTicker(0);
+}
+function setNodeStatus(id, status){
+  if(!nodeById[id]) return;
+  nodeById[id].status = status;
+  updateNodeMarker(nodeById[id]);
+  updateAllLinks();
+}
+ 
+/* ==================================================================
+   5. DECORATIVE INTRO / HERO TOPOLOGY (abstract canvas, unrelated
+      to the real NOC map — kept for the scroll-in cinematic intro)
+   ================================================================== */
+function computeLayout(w,h){
+  const marginX = 0.09, marginY = 0.08;
+  const usableW = 1 - marginX*2, usableH = 1 - marginY*2;
+  const rows = 6;
+  const byLayer = {};
+  NODES.forEach(n=>{ (byLayer[n.layer] = byLayer[n.layer]||[]).push(n); });
+  Object.keys(byLayer).forEach(li=>{
+    const arr = byLayer[li];
+    const y = marginY + usableH * (li/(rows-1));
+    arr.forEach((n,i)=>{
+      const x = marginX + usableW * ((i+1)/(arr.length+1));
+      n.fx = x; n.fy = y;
+    });
+  });
+}
+computeLayout();
+ 
+function makePacketPool(){
+  return LINKS.map(([a,b])=>({
+    a,b, packets:[0.1,0.4,0.7].map(o=>({t:o, speed:0.0028+Math.random()*0.001, active:true}))
+  }));
+}
+let packetLinks = makePacketPool();
+ 
+function drawTopology(ctx, w, h, opts){
+  opts = opts || {};
+  const activeGroup = SWITCH_GROUPS[SIM.activeLayer] || null;
+ 
+  ctx.clearRect(0,0,w,h);
+ 
+  LINKS.forEach(([a,b])=>{
+    const na = nodeById[a], nb = nodeById[b];
+    const x1=na.fx*w, y1=na.fy*h, x2=nb.fx*w, y2=nb.fy*h;
+    const isRootLink = (a==='FIB-MUM-A'||b==='FIB-MUM-A') && (SIM.phase!=='normal');
+    let alpha = 0.34;
+    if(activeGroup && !(activeGroup.includes(na.layer) && activeGroup.includes(nb.layer))) alpha = 0.06;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle = isRootLink ? getCss('--crit') : getCss('--panel-line');
+    ctx.globalAlpha = isRootLink ? 0.9 : alpha;
+    ctx.lineWidth = isRootLink ? 2 : 1;
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+ 
+  if(!opts.minimap && SIM.phase!=='storm'){
+    packetLinks.forEach(pl=>{
+      const na=nodeById[pl.a], nb=nodeById[pl.b];
+      const blocked = pl.a==='FIB-MUM-A' && (SIM.phase==='storm'||SIM.phase==='correlating'||SIM.phase==='rootcause');
+      if(blocked) return;
+      pl.packets.forEach(p=>{
+        if(!REDUCED_MOTION){ p.t += p.speed * (opts.dt||16); if(p.t>1) p.t=0; }
+        const x = na.fx*w + (nb.fx-na.fx)*w*p.t;
+        const y = na.fy*h + (nb.fy-na.fy)*h*p.t;
+        ctx.beginPath(); ctx.arc(x,y,opts.minimap?1:1.8,0,Math.PI*2);
+        ctx.fillStyle = getCss('--signal'); ctx.globalAlpha=.85; ctx.fill();
+      });
+    });
+    ctx.globalAlpha=1;
+  }
+ 
+  if(SIM.phase==='rootcause' && !opts.minimap){
+    const target = nodeById[SIM.rootCauseId];
+    const evidenceSources = ['CR-MUM-01','CS-MUM-01','CS-MUM-02','ER-MUM-01'];
+    evidenceSources.forEach((id)=>{
+      const n = nodeById[id];
+      ctx.beginPath();
+      ctx.moveTo(n.fx*w, n.fy*h);
+      ctx.lineTo(target.fx*w, target.fy*h);
+      ctx.strokeStyle = getCss('--fiber');
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([2,4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+    ctx.globalAlpha=1;
+  }
+ 
+  NODES.forEach(n=>{
+    const x=n.fx*w, y=n.fy*h;
+    const r = opts.minimap ? 2.4 : (n.kind==='fiber'?5:7);
+    let dimmed = activeGroup && !activeGroup.includes(n.layer);
+    n.pulse += (REDUCED_MOTION?0:0.05);
+    const pulseR = r + Math.sin(n.pulse)*(n.status==='critical'?2.2:1);
+    const col = statusColor(n.status);
+    ctx.globalAlpha = dimmed ? 0.18 : 1;
+    if(!opts.minimap){
+      ctx.beginPath(); ctx.arc(x,y,pulseR+6,0,Math.PI*2);
+      ctx.fillStyle = col; ctx.globalAlpha = dimmed?0.05:(n.status==='critical'?0.22:0.1); ctx.fill();
+    }
+    ctx.globalAlpha = dimmed ? 0.25 : 1;
+    ctx.beginPath(); ctx.arc(x,y,pulseR,0,Math.PI*2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.lineWidth=1; ctx.strokeStyle = getCss('--bg-1'); ctx.stroke();
+ 
+    if(!opts.minimap){
+      ctx.font = '600 9.5px ' + getComputedStyle(document.body).fontFamily.split(',')[0];
+      ctx.fillStyle = getCss('--ink-2');
+      ctx.textAlign='center';
+      ctx.fillText(n.label, x, y + pulseR + 13);
+    }
+  });
+  ctx.globalAlpha=1;
+}
+ 
+function renderDashboard(){
+  updateFinancialTicker(0);
+  updateFinancialChart(0);
+}
+renderDashboard();
+window.addEventListener('resize', ()=>{
+  renderDashboard();
+  if (typeof map !== 'undefined' && map) map.invalidateSize();
+});
+
+/* ============================================================
+   6. CINEMATIC LANDING BACKGROUND
+   Continuous waves + moving concentric intelligence rings.
+   No topology/nodes are rendered on the landing screens.
+   ============================================================ */
+const introCanvas = document.getElementById('intro-core-canvas');
+const introCtx = introCanvas.getContext('2d');
+let landingTime = 0;
+
+function resizeIntro(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = introCanvas.parentElement.getBoundingClientRect();
+  introCanvas.width = Math.max(1, rect.width * dpr);
+  introCanvas.height = Math.max(1, rect.height * dpr);
+  introCanvas.style.width = rect.width + 'px';
+  introCanvas.style.height = rect.height + 'px';
+  introCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeIntro);
+resizeIntro();
+
+function drawLandingBackground(){
+  const w = introCanvas.clientWidth;
+  const h = introCanvas.clientHeight;
+  const t = landingTime;
+
+  introCtx.clearRect(0, 0, w, h);
+
+  // Subtle technical grid.
+  introCtx.strokeStyle = getCss('--grid-line');
+  introCtx.lineWidth = 1;
+  for(let x = 0; x <= w; x += 64){
+    introCtx.beginPath(); introCtx.moveTo(x,0); introCtx.lineTo(x,h); introCtx.stroke();
+  }
+  for(let y = 0; y <= h; y += 64){
+    introCtx.beginPath(); introCtx.moveTo(0,y); introCtx.lineTo(w,y); introCtx.stroke();
+  }
+
+  const cx = w * 0.5;
+  const cy = h * 0.43;
+
+  // Large moving circular intelligence structures.
+  introCtx.save();
+  introCtx.translate(cx, cy);
+  for(let i=0; i<8; i++){
+    const radius = 52 + i * 58 + Math.sin(t*0.00055 + i)*4;
+    const rotation = t*(0.00010 + i*0.000018)*(i%2 ? -1 : 1);
+
+    introCtx.save();
+    introCtx.rotate(rotation);
+    introCtx.beginPath();
+    introCtx.arc(0,0,radius,0,Math.PI*2);
+    introCtx.strokeStyle = getCss('--fiber');
+    introCtx.globalAlpha = 0.07 + (i===0 ? 0.07 : 0);
+    introCtx.lineWidth = i===0 ? 1.5 : 1;
+    introCtx.stroke();
+
+    const ang = t*0.00042*(i%2 ? -1 : 1) + i*1.31;
+    const px = Math.cos(ang)*radius;
+    const py = Math.sin(ang)*radius;
+    introCtx.beginPath();
+    introCtx.arc(px,py,i<2?2.5:1.5,0,Math.PI*2);
+    introCtx.fillStyle = getCss('--fiber');
+    introCtx.globalAlpha = .65;
+    introCtx.fill();
+    introCtx.restore();
+  }
+
+  const glow = introCtx.createRadialGradient(0,0,0,0,0,105);
+  glow.addColorStop(0,getCss('--fiber'));
+  glow.addColorStop(.2,'rgba(63,214,196,.20)');
+  glow.addColorStop(1,'transparent');
+  introCtx.globalAlpha = .5;
+  introCtx.fillStyle = glow;
+  introCtx.beginPath(); introCtx.arc(0,0,105,0,Math.PI*2); introCtx.fill();
+
+  introCtx.globalAlpha = .95;
+  introCtx.beginPath();
+  introCtx.arc(0,0,5 + Math.sin(t*.003)*1.4,0,Math.PI*2);
+  introCtx.fillStyle = getCss('--fiber');
+  introCtx.fill();
+  introCtx.restore();
+
+  // Continuous flowing telecom/fiber waves.
+  for(let wi=0; wi<5; wi++){
+    const yBase = h*(0.16 + wi*0.17);
+    const amp = 25 + wi*5;
+    const wavelength = 620 + wi*90;
+    const speed = 0.00045 + wi*0.000065;
+
+    introCtx.beginPath();
+    for(let x=-30; x<=w+30; x+=4){
+      const y = yBase
+        + Math.sin(x/wavelength*Math.PI*2 + t*speed + wi*.9)*amp
+        + Math.sin(x/(wavelength*.48) + t*speed*.7)*amp*.18;
+      if(x===-30) introCtx.moveTo(x,y); else introCtx.lineTo(x,y);
+    }
+    introCtx.strokeStyle = getCss('--fiber');
+    introCtx.globalAlpha = wi===2 ? .16 : .11;
+    introCtx.lineWidth = wi===2 ? 1.5 : 1;
+    introCtx.stroke();
+
+    // Moving light pulse riding the wave.
+    const px = ((t*(0.045 + wi*.007))%(w+220))-110;
+    const py = yBase + Math.sin(px/wavelength*Math.PI*2 + t*speed + wi*.9)*amp;
+    const pulse = introCtx.createRadialGradient(px,py,0,px,py,19);
+    pulse.addColorStop(0,getCss('--fiber'));
+    pulse.addColorStop(1,'transparent');
+    introCtx.globalAlpha = .85;
+    introCtx.fillStyle = pulse;
+    introCtx.beginPath(); introCtx.arc(px,py,19,0,Math.PI*2); introCtx.fill();
+  }
+  introCtx.globalAlpha = 1;
+}
+
+function landingFrame(now){
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches) landingTime = now;
+  drawLandingBackground();
+  requestAnimationFrame(landingFrame);
+}
+requestAnimationFrame(landingFrame);
+
+/* ==================================================================
+   7. KINETIC / DECODE TYPOGRAPHY (hero headline)
+   ================================================================== */
+const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/#';
+function decodeText(el, finalText, delayStart){
+  const chars = finalText.split('');
+  el.innerHTML = chars.map(()=>'<span class="kchar">&nbsp;</span>').join('');
+  const spans = el.querySelectorAll('.kchar');
+  chars.forEach((ch,i)=>{
+    const span = spans[i];
+    if(ch===' '){ span.innerHTML='&nbsp;'; return; }
+    let ticks = REDUCED_MOTION ? 1 : (8+Math.floor(Math.random()*8));
+    let count=0;
+    setTimeout(function tick(){
+      if(count<ticks){
+        span.textContent = GLYPHS[Math.floor(Math.random()*GLYPHS.length)];
+        count++;
+        setTimeout(tick, 28);
+      } else {
+        span.textContent = ch;
+      }
+    }, delayStart + i*26);
+  });
+}
+let heroDecoded = false;
+function maybeDecodeHero(){
+  if(heroDecoded) return;
+  const rect = document.getElementById('hero').getBoundingClientRect();
+  if(rect.top < window.innerHeight*0.75){
+    heroDecoded = true;
+    const l1 = document.querySelector('.hero-kinetic .line1');
+    const l2 = document.querySelector('.hero-kinetic .line2');
+    decodeText(l1, l1.dataset.final, 0);
+    decodeText(l2, l2.dataset.final, 500);
+  }
+}
+window.addEventListener('scroll', maybeDecodeHero, {passive:true});
+maybeDecodeHero();
+ 
+/* ==================================================================
+   8. LAYER SWITCHER
+   ================================================================== */
+document.getElementById('layer-switcher').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.layer-chip');
+  if(!btn) return;
+  document.querySelectorAll('.layer-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  const feature = btn.dataset.feature;
+  const grid = document.querySelector('.noc-grid');
+  const stage = document.getElementById('feature-stage');
+  document.querySelectorAll('.feature-panel').forEach(p=>p.classList.toggle('active', !!feature && p.dataset.featurePanel===feature));
+  if(feature){
+    SIM.activeLayer = 'all';
+    grid.classList.add('feature-hidden');
+    stage.classList.add('feature-visible');
+  } else {
+    SIM.activeLayer = btn.dataset.layer;
+    grid.classList.remove('feature-hidden');
+    stage.classList.remove('feature-visible');
+    setTimeout(()=>map.invalidateSize(), 60);
+  }
+  applyLayerDim();
+});
+ 
+/* ==================================================================
+   9. LIVE SYSTEM CLOCK
+   ================================================================== */
+function tickClock(){
+  SIM.clockOffset += 1;
+  const total = SIM.startClock + SIM.clockOffset;
+  const h = Math.floor(total/3600)%24, m=Math.floor((total%3600)/60), s=total%60;
+  const pad=v=>String(v).padStart(2,'0');
+  document.getElementById('systime').textContent = `${pad(h)}:${pad(m)}:${pad(s)} IST`;
+}
+setInterval(tickClock, 1000);
+ 
+/* ==================================================================
+   10. EVENT LOG
+   ================================================================== */
+function logEvent(msg, sev){
+  const log = document.getElementById('event-log');
+  const row = document.createElement('div');
+  row.className = 'log-row sev-'+(sev||'info');
+  const time = document.getElementById('systime').textContent.replace(' IST','');
+  row.innerHTML = `<span class="t">${time}</span><span class="m">${msg}</span>`;
+  log.appendChild(row);
+  while(log.children.length>40) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+ 
+/* ==================================================================
+   11. ESCALATION TIMELINE
+   ================================================================== */
+const TIMELINE_STEPS = [
+  {t:'+00:00', l:'Alert detected'},
+  {t:'+00:07', l:'Correlation started'},
+  {t:'+00:12', l:'Root cause identified'},
+  {t:'+00:15', l:'SEV-1 created'},
+  {t:'+00:18', l:'Engineer notified'},
+  {t:'+00:24', l:'Runbook approved'},
+  {t:'+00:30', l:'Recovery initiated'},
+  {t:'+00:42', l:'Network restored'},
+];
+function renderTimeline(){
+  const el = document.getElementById('timeline');
+  el.innerHTML = TIMELINE_STEPS.map((s,i)=>`
+    <div class="tl-step" data-i="${i}">
+      <div class="tl-dot"></div>
+      <div class="tl-body"><div class="tl-t">${s.t}</div><div class="tl-l">${s.l}</div></div>
+    </div>`).join('');
+}
+renderTimeline();
+function advanceTimeline(i){
+  const step = document.querySelector(`.tl-step[data-i="${i}"]`);
+  if(step) step.classList.add('done');
+}
+ 
+/* ==================================================================
+   12. RUNBOOK
+   ================================================================== */
+const RUNBOOK_STEPS = [
+  'Verify uplink status on ER-MUM-01',
+  'Restart BGP session on CR-MUM-01',
+  'Verify OSPF adjacency re-establishment',
+  'Confirm alternate route via CR-MUM-02',
+  'Verify downstream traffic restoration',
+];
+function renderRunbookAssembling(){
+  const body = document.getElementById('runbook-body');
+  body.innerHTML = `<p style="font-family:var(--mono); font-size:.72rem; color:var(--fiber);">MATCHING RUNBOOK…</p>`;
+  setTimeout(()=>{
+    body.innerHTML = `<p style="font-family:var(--mono); font-size:.76rem; color:var(--ink-0); margin-bottom:.9em;">RB-014 — Core Uplink Failure</p>
+      <div class="runbook-steps">${RUNBOOK_STEPS.map((s,i)=>`<div class="rb-step" data-i="${i}"><span class="rb-num">0${i+1}</span><span>${s}</span></div>`).join('')}</div>
+      <div class="rb-actions">
+        <button class="btn btn-primary" id="exec-tier1-btn">Execute Tier 1</button>
+        <button class="btn" id="require-approval-btn">Require Human Approval</button>
+      </div>`;
+    document.getElementById('exec-tier1-btn').addEventListener('click', runRunbookSteps);
+    document.getElementById('require-approval-btn').addEventListener('click', ()=>{
+      logEvent('MANUAL APPROVAL REQUESTED — ENGINEER NOTIFIED','warn');
+      setTimeout(runRunbookSteps, 900);
+    });
+  }, 1100);
+}
+function runRunbookSteps(){
+  document.getElementById('exec-tier1-btn') && (document.getElementById('exec-tier1-btn').disabled=true);
+  let i=0;
+  const stepEls = document.querySelectorAll('.rb-step');
+  function next(){
+    if(i>0) stepEls[i-1].classList.replace('active','complete');
+    if(i>=RUNBOOK_STEPS.length){ setPhase('recovering'); beginRecovery(); return; }
+    stepEls[i].classList.add('active');
+    logEvent('RUNBOOK STEP '+String(i+1).padStart(2,'0')+': '+RUNBOOK_STEPS[i], 'ok');
+    i++;
+    setTimeout(next, 900);
+  }
+  next();
+}
+ 
+/* ==================================================================
+   13. FINANCIAL TICKER
+   ================================================================== */
+function updateFinancialTicker(dt){
+  const el = document.getElementById('impact-figure');
+  const sub = document.getElementById('impact-sub');
+  if(SIM.frozen){ return; }
+  SIM.financialTotal += SIM.financialRate*(dt/1000);
+  el.textContent = '₹'+Math.round(SIM.financialRate).toLocaleString('en-IN')+'/sec';
+  el.classList.toggle('frozen', SIM.financialRate===0);
+  sub.textContent = 'Cumulative impact: ₹'+Math.round(SIM.financialTotal).toLocaleString('en-IN');
+}
+function freezeFinancial(){
+  SIM.frozen = true;
+  const el = document.getElementById('impact-figure');
+  el.classList.add('frozen');
+}
+ 
+/* ==================================================================
+   14. FINANCIAL IMPACT CHART + AI EXPLANATION
+   Rendered like a stock-market ticker: the line and the filled area
+   below it turn red while the loss is growing (worsening incident)
+   and green while it is flat/falling (recovery, i.e. "profit" back).
+   ================================================================== */
+const financialCanvas = document.getElementById('financial-chart');
+const financialCtx = financialCanvas.getContext('2d');
+const financialHistory = [];
+function sizeFinancial(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  financialCanvas.width=financialCanvas.clientWidth*dpr; financialCanvas.height=95*dpr;
+  financialCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+function drawFinancial(){
+  const w=financialCanvas.clientWidth,h=95;
+  financialCtx.clearRect(0,0,w,h);
+  financialCtx.strokeStyle=getCss('--panel-line'); financialCtx.lineWidth=1;
+  for(let y=20;y<h;y+=25){ financialCtx.beginPath(); financialCtx.moveTo(0,y); financialCtx.lineTo(w,y); financialCtx.stroke(); }
+  if(financialHistory.length<2) return;
+
+  const max=Math.max(...financialHistory,1);
+  const min=Math.min(...financialHistory,0);
+  const span=Math.max(max-min,1);
+  const xAt=i=>w*(i/(Math.max(1,financialHistory.length-1)));
+  const yAt=v=>h-8-((v-min)/span)*(h-20);
+
+  const okCol = getCss('--ok');
+  const critCol = getCss('--crit');
+
+  const lastUp = financialHistory[financialHistory.length-1] > financialHistory[financialHistory.length-2];
+  const areaCol = lastUp ? critCol : okCol;
+  financialCtx.beginPath();
+  financialHistory.forEach((v,i)=>{
+    const x=xAt(i), y=yAt(v);
+    if(i===0) financialCtx.moveTo(x,y); else financialCtx.lineTo(x,y);
+  });
+  financialCtx.lineTo(xAt(financialHistory.length-1), h);
+  financialCtx.lineTo(xAt(0), h);
+  financialCtx.closePath();
+  financialCtx.globalAlpha = 0.12;
+  financialCtx.fillStyle = areaCol;
+  financialCtx.fill();
+  financialCtx.globalAlpha = 1;
+
+  for(let i=1;i<financialHistory.length;i++){
+    const x1=xAt(i-1), y1=yAt(financialHistory[i-1]);
+    const x2=xAt(i), y2=yAt(financialHistory[i]);
+    const rising = financialHistory[i] > financialHistory[i-1];
+    financialCtx.beginPath();
+    financialCtx.moveTo(x1,y1);
+    financialCtx.lineTo(x2,y2);
+    financialCtx.strokeStyle = rising ? critCol : okCol;
+    financialCtx.lineWidth = 2;
+    financialCtx.lineCap = 'round';
+    financialCtx.stroke();
+  }
+
+  const last=financialHistory[financialHistory.length-1];
+  const x=xAt(financialHistory.length-1), y=yAt(last);
+  financialCtx.fillStyle= lastUp ? critCol : okCol;
+  financialCtx.beginPath(); financialCtx.arc(x,y,3,0,Math.PI*2); financialCtx.fill();
+}
+const SERVICE_SHARE = { payments:0.42, enterprise:0.28, retail:0.22, iot:0.08 };
+const SERVICE_LABEL = { payments:'Payments', enterprise:'Enterprise', retail:'Retail', iot:'IoT/M2M' };
+function topAffectedServices(n){
+  return Object.entries(SERVICE_SHARE).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>SERVICE_LABEL[k]);
+}
+function updateFinancialChart(dt){
+  if(SIM.frozen) return;
+  financialHistory.push(SIM.financialTotal);
+  if(financialHistory.length>90) financialHistory.shift();
+  drawFinancial();
+  const ai=document.getElementById('financial-ai-explanation');
+  if(SIM.financialRate>0){
+    const [top1, top2] = topAffectedServices(2);
+    ai.textContent = `AI assessment: the current exposure is approximately ₹${Math.round(SIM.financialRate).toLocaleString('en-IN')} per second because the Mumbai fiber cut is affecting dependent network paths and customer-facing services. ${top1} and ${top2} are the most affected services and account for the largest share of the loss. Exposure will continue to accumulate until traffic is restored.`;
+  }
+}
+
+function updateOutageCost(){
+  const rate = SIM.financialRate;
+  document.getElementById('cost-sec').textContent = '₹'+Math.round(rate).toLocaleString('en-IN');
+  document.getElementById('cost-min').textContent = '₹'+Math.round(rate*60).toLocaleString('en-IN');
+  document.getElementById('cost-10min').textContent = '₹'+Math.round(rate*600).toLocaleString('en-IN');
+}
+
+function updateServiceBreakdown(){
+  const total = SIM.financialTotal;
+  const maxShare = Math.max(...Object.values(SERVICE_SHARE));
+  Object.entries(SERVICE_SHARE).forEach(([svc,share])=>{
+    const row = document.querySelector(`.breakdown-row[data-svc="${svc}"]`);
+    if(!row) return;
+    const val = total*share;
+    row.querySelector('.bd-fill').style.width = (total>0 ? (share/maxShare*100) : 0)+'%';
+    row.querySelector('.bd-val').textContent = '₹'+Math.round(val).toLocaleString('en-IN');
+  });
+}
+
+const MTTR_MANUAL_SEC = 47*60, MTTR_AI_SEC = 9*60;
+function updateLossAvoided(){
+  const el = document.getElementById('loss-avoided-figure');
+  const sub = document.getElementById('loss-avoided-sub');
+  if(!el) return;
+  if(!SIM.peakRate){
+    el.textContent = '₹0';
+    sub.textContent = 'Estimated savings from AI-assisted vs manual recovery';
+    return;
+  }
+  const savings = SIM.peakRate*(MTTR_MANUAL_SEC-MTTR_AI_SEC);
+  el.textContent = '₹'+Math.round(savings).toLocaleString('en-IN');
+  sub.textContent = `Avoided by resolving in ~9 min instead of ~47 min at a peak of ₹${Math.round(SIM.peakRate).toLocaleString('en-IN')}/sec`;
+}
+
+function resetFinancialChart(){
+  financialHistory.length=0; financialHistory.push(0); drawFinancial();
+  document.getElementById('financial-ai-explanation').textContent='No active incident. Financial exposure is currently zero because affected services are operating normally.';
+  updateOutageCost();
+  updateServiceBreakdown();
+  updateLossAvoided();
+}
+window.addEventListener('resize', sizeFinancial); sizeFinancial(); resetFinancialChart();
+
+setInterval(()=>{
+  if(!SIM.frozen){
+    updateFinancialTicker(500);
+    updateFinancialChart(500);
+  }
+  updateOutageCost();
+  updateServiceBreakdown();
+  updateLossAvoided();
+}, 500);
+ 
+/* ==================================================================
+   15. PREDICTIVE FAILURE CHART
+   ================================================================== */
+const predCanvas = document.getElementById('predictive-chart');
+const predCtx = predCanvas.getContext('2d');
+function sizePred(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  predCanvas.width = predCanvas.clientWidth*dpr; predCanvas.height=60*dpr;
+  predCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', sizePred); sizePred();
+function drawPredictive(progress){
+  const w=predCanvas.clientWidth,h=60;
+  predCtx.clearRect(0,0,w,h);
+  predCtx.beginPath();
+  const n=40;
+  for(let i=0;i<=n;i++){
+    const x = w*(i/n);
+    const decline = Math.max(0, (i/n - (1-progress*1.3)));
+    const y = h*0.25 + decline*h*1.6 + Math.sin(i*0.7)*1.5;
+    if(i===0) predCtx.moveTo(x,y); else predCtx.lineTo(x,y);
+  }
+  predCtx.strokeStyle = getCss(progress>0.5?'--amber':'--fiber');
+  predCtx.lineWidth=1.6; predCtx.stroke();
+}
+drawPredictive(0);
+ 
+/* ==================================================================
+   16. MTTR VISUAL
+   ================================================================== */
+function renderMTTR(active){
+  const mFill = document.getElementById('mttr-manual'), aFill=document.getElementById('mttr-ai');
+  const mVal = document.getElementById('mttr-manual-val'), aVal=document.getElementById('mttr-ai-val');
+  if(!active){ mFill.style.width='0%'; aFill.style.width='0%'; mVal.textContent='—'; aVal.textContent='—'; return; }
+  mFill.style.width='92%'; mVal.textContent='47 min';
+  aFill.style.width='18%'; aVal.textContent='9 min';
+}
+ 
+/* ==================================================================
+   17. NETWORK HEALTH BAND
+   ================================================================== */
+function healthWord(status){ return status.toUpperCase(); }
+function setHealthLayerState(key, status){
+  const el=document.querySelector('.health-'+key);
+  if(!el) return;
+  el.classList.remove('state-critical','state-degraded','state-recovering');
+  if(status!=='healthy') el.classList.add('state-'+status);
+ 
+  const b=el.querySelector('b');
+  if(b) b.textContent=healthWord(status);
+ 
+  const score=document.getElementById('health-'+key+'-score');
+  const fill=el.querySelector('.health-fill');
+  const scoreMap={
+    healthy:'100% nominal',
+    recovering:'75% recovering',
+    degraded:'55% degraded',
+    critical:'20% critical',
+    suppressed:'— suppressed'
+  };
+  const fillMap={healthy:'100%',recovering:'75%',degraded:'55%',critical:'20%',suppressed:'35%'};
+  if(score) score.textContent=scoreMap[status]||'Monitoring';
+  if(fill) fill.style.width=fillMap[status]||'100%';
+ 
+  const dot=el.querySelector('.health-dot');
+  if(dot){
+    dot.style.background=status==='critical'?'var(--crit)':status==='degraded'?'var(--amber)':status==='recovering'?'var(--signal)':'var(--ok)';
+    dot.style.boxShadow='0 0 8px '+(status==='critical'?'var(--crit)':status==='degraded'?'var(--amber)':status==='recovering'?'var(--signal)':'var(--ok)');
+  }
+}
+function renderHealthBand(){
+  const groups={
+    physical:['FIB-MUM-A','FIB-MUM-B'],
+    network:['CR-MUM-01','CR-MUM-02','CS-MUM-01','CS-MUM-02'],
+    access:['ER-MUM-01','BSC-MUM-01','RNC-MUM-01','BTS-MUM-014','BTS-MUM-022'],
+    service:['DNS-SVC','AUTH-SVC','PAY-SVC'],
+    customer:['CUST-RETAIL','CUST-ENT','CUST-IOT']
+  };
+  const rank={healthy:0,recovering:1,degraded:2,critical:3,suppressed:1};
+  Object.entries(groups).forEach(([key,ids])=>{
+    const status=ids.reduce((worst,id)=>rank[nodeById[id].status] > rank[worst] ? nodeById[id].status : worst,'healthy');
+    setHealthLayerState(key,status);
+  });
+  const statusMap={normal:'ALL SYSTEMS NOMINAL',storm:'CRITICAL PROPAGATION DETECTED',correlating:'CORRELATION — PROPAGATION MAPPED',rootcause:'ROOT CAUSE / BLAST RADIUS CONFIRMED',rerouting:'TRAFFIC RE-ROUTING',runbook:'REMEDIATION IN PROGRESS',recovering:'RECOVERY WAVE IN PROGRESS',healthy:'ALL SYSTEMS NOMINAL'};
+  document.getElementById('health-feature-status').textContent=statusMap[SIM.phase]||'MONITORING';
+  const text = SIM.phase==='normal'||SIM.phase==='healthy'
+    ? 'The system tracks how an infrastructure fault propagates downstream through dependent layers.'
+    : 'Red marks the origin of critical failure, amber shows downstream degradation, and blue shows active recovery.';
+  document.getElementById('health-explanation').textContent=text;
+  const ai=document.getElementById('health-ai-explanation');
+  if(SIM.phase==='normal'||SIM.phase==='healthy') ai.textContent='Gemini explanation: all monitored layers are nominal. There is no active propagation requiring operator action.';
+  else if(SIM.phase==='recovering'||SIM.phase==='healthy') ai.textContent='Gemini explanation: recovery is progressing from the failed infrastructure path toward services and customers. The network is moving back toward nominal state.';
+  else ai.textContent='Gemini explanation: the incident begins at the physical/network layer and propagates downstream. The pattern is consistent with an upstream uplink failure rather than independent service failures.';
+}
+renderHealthBand();
+ 
+/* ==================================================================
+   18. THEME TOGGLE WITH NETWORK PULSE
+   ================================================================== */
+document.getElementById('theme-toggle').addEventListener('click', (e)=>{
+  const html = document.body;
+  const next = html.getAttribute('data-theme')==='dark' ? 'light':'dark';
+  const pulse = document.getElementById('theme-pulse');
+  const rect = e.target.getBoundingClientRect();
+  pulse.style.left = (rect.left+rect.width/2)+'px';
+  pulse.style.top = (rect.top+rect.height/2)+'px';
+  pulse.style.width = pulse.style.height = '20px';
+  pulse.style.opacity = 1;
+  pulse.style.transition = 'none';
+  pulse.getBoundingClientRect();
+  pulse.style.transition = REDUCED_MOTION ? 'none' : 'width 0.9s ease, height 0.9s ease, opacity 0.9s ease';
+  pulse.style.width = pulse.style.height = (window.innerWidth*2.6)+'px';
+  setTimeout(()=>{
+    html.setAttribute('data-theme', next);
+    setMapTheme(next);
+    renderMapState();
+  }, REDUCED_MOTION?0:220);
+  setTimeout(()=>{ pulse.style.opacity=0; }, REDUCED_MOTION?50:900);
+});
+ 
+/* ==================================================================
+   19. MAIN SIMULATION SEQUENCE (state machine driver)
+   ================================================================== */
+const simBtn = document.getElementById('sim-btn');
+const resetBtn = document.getElementById('reset-btn');
+document.getElementById('enter-noc-btn').addEventListener('click', ()=>{
+  document.getElementById('noc').scrollIntoView({behavior: REDUCED_MOTION?'auto':'smooth'});
+  setTimeout(()=>map.invalidateSize(), 400);
+});
+ 
+function runSimulation(){
+  simBtn.disabled = true;
+  logEvent('SIMULATION STARTED: MUMBAI FIBER CUT','info');
+  
+  // Try to notify backend if available
+  try {
+    fetch('http://localhost:8000/api/scenarios/fiber-cut', {method:'POST'}).catch(()=>{});
+  } catch(e){}
+ 
+  // STAGE 0: failure
+  setTimeout(()=>{
+    setPhase('storm');
+    setNodeStatus('FIB-MUM-A','critical');
+    setNodeStatus('CR-MUM-01','critical');
+    logEvent('ER-MUM-01 UPLINK LINK DOWN','crit');
+    advanceTimeline(0);
+    SIM.frozen=false; SIM.financialRate=8547; SIM.peakRate=8547;
+  }, 300);
+ 
+  // STAGE 1: cascading alerts
+  const cascade = [
+    ['CS-MUM-01','critical','OSPF NEIGHBOR LOST — CS-MUM-01'],
+    ['CS-MUM-02','degraded','BGP SESSION DROPPED — CS-MUM-02'],
+    ['ER-MUM-01','degraded','PACKET LOSS DETECTED — ER-MUM-01'],
+    ['BSC-MUM-01','degraded','INTERFACE FLAPPING — BSC-MUM-01'],
+    ['BTS-MUM-014','degraded','HIGH CPU — BTS-MUM-014'],
+    ['DNS-SVC','degraded','SERVICE TIMEOUT — DNS-SVC'],
+    ['AUTH-SVC','critical','SERVICE TIMEOUT — AUTH-SVC'],
+    ['CUST-RETAIL','degraded','CUSTOMER IMPACT DETECTED — RETAIL'],
+  ];
+  cascade.forEach(([id,status,msg],i)=>{
+    setTimeout(()=>{
+      setNodeStatus(id,status);
+      logEvent(msg,'crit');
+      renderHealthBand();
+      SIM.blastSet.add(id);
+    }, 900 + i*380);
+  });
+ 
+  // STAGE 2: correlation begins
+  setTimeout(()=>{
+    setPhase('correlating');
+    logEvent('CORRELATION ENGINE ACTIVATED','warn');
+    advanceTimeline(1);
+  }, 900 + cascade.length*380 + 400);
+ 
+  // STAGE 3: root cause identified
+  setTimeout(()=>{
+    setPhase('rootcause');
+    SIM.confidence = 89;
+    logEvent('ROOT CAUSE IDENTIFIED — ER-MUM-01 UPLINK (FIB-MUM-A)','ok');
+    advanceTimeline(2);
+    document.getElementById('command-strip').classList.add('active');
+    document.getElementById('cs-rootcause').textContent='ER-MUM-01 UPLINK';
+    document.getElementById('cs-confidence').textContent='89%';
+    document.getElementById('cs-affected').textContent='11 DEVICES';
+    document.getElementById('cs-impact').textContent='₹8,547/sec';
+    advanceTimeline(3);
+    renderMTTR(true);
+    map.flyTo(coordOf('ER-MUM-01'), 13, {duration: REDUCED_MOTION?0:1.2});
+  }, 900 + cascade.length*380 + 1600);
+ 
+  // predictive chart animates alongside
+  let predT=0;
+  const predTimer = setInterval(()=>{
+    predT += 0.06; drawPredictive(Math.min(1,predT));
+    document.getElementById('predictive-caption').textContent = predT<1 ? 'Optical power drifting on ER-MUM-01 uplink' : 'Failure threshold crossed — matches incident timeline';
+    const pai=document.getElementById('predictive-ai-explanation');
+    if(pai) pai.textContent = predT<1
+      ? 'Gemini explanation: optical power is drifting away from nominal. This is an early-warning signal that precedes the observed uplink failure.'
+      : 'Gemini explanation: the optical signal crossed the warning threshold, matching the incident timeline and strengthening the predictive-failure evidence.';
+    if(predT>=1) clearInterval(predTimer);
+  }, 200);
+ 
+  // STAGE 4: rerouting
+  const t4 = 900 + cascade.length*380 + 2800;
+  setTimeout(()=>{
+    setPhase('rerouting');
+    logEvent('ALTERNATE ROUTE VIA CR-MUM-02 ACTIVATED','warn');
+    setNodeStatus('CR-MUM-02','recovering');
+  }, t4);
+ 
+  // STAGE 5: runbook
+  const t5 = t4 + 1400;
+  setTimeout(()=>{
+    setPhase('runbook');
+    renderRunbookAssembling();
+    advanceTimeline(5);
+  }, t5);
+}
+ 
+function beginRecovery(){
+  logEvent('RECOVERY WAVE INITIATED FROM ER-MUM-01','ok');
+  advanceTimeline(6);
+  
+  // Try to notify backend if available
+  try {
+    fetch('http://localhost:8000/api/runbook/execute', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({incident_id: 'INC-MUM-FIB-01', action_id: 'RB-ACT-001', is_tier1: true})
+    }).catch(()=>{});
+  } catch(e){}
+
+  const order = ['FIB-MUM-A','CR-MUM-01','CS-MUM-01','CS-MUM-02','ER-MUM-01','BSC-MUM-01','BTS-MUM-014','DNS-SVC','AUTH-SVC','CUST-RETAIL','CR-MUM-02'];
+  order.forEach((id,i)=>{
+    setTimeout(()=>{
+      setNodeStatus(id,'recovering');
+      renderHealthBand();
+      setTimeout(()=>{ setNodeStatus(id,'healthy'); renderHealthBand(); }, 700);
+    }, i*260);
+  });
+  setTimeout(()=>{
+    setPhase('healthy');
+    logEvent('NETWORK RESTORED — ALL SYSTEMS NOMINAL','ok');
+    advanceTimeline(7);
+    SIM.financialRate = 0;
+    freezeFinancial();
+    document.getElementById('impact-sub').textContent = 'Incident resolved — impact stopped';
+    document.getElementById('financial-ai-explanation').textContent = `AI assessment: the outage has been contained and financial exposure has stopped accumulating. Final estimated impact: ₹${Math.round(SIM.financialTotal).toLocaleString('en-IN')}.`;
+    document.getElementById('predictive-caption').textContent = 'Signal restored to nominal';
+    drawPredictive(0);
+    resetBtn.style.display='inline-block';
+    map.flyTo([19.09,72.90], 10, {duration: REDUCED_MOTION?0:1.4});
+  }, order.length*260 + 1200);
+}
+ 
+simBtn.addEventListener('click', runSimulation);
+resetBtn.addEventListener('click', ()=>{
+  try {
+    fetch('http://localhost:8000/api/scenarios/reset', {method:'POST'}).catch(()=>{});
+  } catch(e){}
+  location.reload();
+});
+
+// Optional WebSocket listener to keep backend sync active without interfering with UI
+try {
+  const ws = new WebSocket('ws://localhost:8000/ws/telemetry');
+  ws.onopen = () => console.log('Connected to BharatNet AIOps Backend telemetry');
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'ALERT_STREAM' && SIM.phase === 'normal') {
+        // Only log background alerts when network is nominal
+        logEvent(msg.data.description, msg.data.severity === 'CRITICAL' ? 'crit' : 'info');
+      }
+    } catch(e){}
+  };
+} catch(e){}
+ 
+/* init */
+setPhase('normal');
+updateHealthPill();
+setTimeout(()=>map.invalidateSize(), 300);
+</script>
+</body>
+</html>

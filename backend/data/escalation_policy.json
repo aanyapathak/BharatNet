@@ -1,0 +1,92 @@
+{
+  "levels": [
+    {
+      "severity": "CRITICAL",
+      "label": "P0 - Mission Critical Network Outage",
+      "initial_timeout_sec": 30,
+      "steps": [
+        {
+          "step": 1,
+          "timeout_sec": 0,
+          "role": "L1 / L2 NOC Watch Officer",
+          "contact": "Rajesh Kumar (NOC Lead On-Call)",
+          "channels": [
+            "PagerDuty High-Urgency",
+            "Telegram NOC Bot",
+            "SMS Alert"
+          ],
+          "action": "Acknowledge incident, verify blast radius graph and review suggested Tier 1 runbook"
+        },
+        {
+          "step": 2,
+          "timeout_sec": 45,
+          "role": "Senior Core Network Architect",
+          "contact": "Priya Sharma (Principal IP/MPLS Engineer)",
+          "channels": [
+            "Automated Voice Call (Twilio/Exotel)",
+            "Slack #noc-critical-war-room"
+          ],
+          "action": "Approve Tier 2 Optical Ring / BGP reroute execution"
+        },
+        {
+          "step": 3,
+          "timeout_sec": 90,
+          "role": "VP Network Operations & Chief Technology Officer",
+          "contact": "Dr. Vikram Malhotra (VP Infrastructure Ops)",
+          "channels": [
+            "Executive Incident SMS",
+            "Bridge Conference Line Auto-Dial"
+          ],
+          "action": "Executive briefing, regulatory DoT disclosure tracking, SLA revenue preservation"
+        }
+      ]
+    },
+    {
+      "severity": "HIGH",
+      "label": "P1 - High Severity Service Degradation",
+      "initial_timeout_sec": 60,
+      "steps": [
+        {
+          "step": 1,
+          "timeout_sec": 0,
+          "role": "NOC Domain Engineer",
+          "contact": "Amit Patel (Systems & App On-Call)",
+          "channels": [
+            "Slack #noc-alerts",
+            "Email Notification"
+          ],
+          "action": "Review application pool metrics and execute Tier 1 cleanup"
+        },
+        {
+          "step": 2,
+          "timeout_sec": 120,
+          "role": "Service Delivery Manager",
+          "contact": "Sneha Rao (SDM West)",
+          "channels": [
+            "SMS Alert",
+            "PagerDuty Medium"
+          ],
+          "action": "Coordinate cross-functional incident mitigation"
+        }
+      ]
+    },
+    {
+      "severity": "MEDIUM",
+      "label": "P2 - Access Layer / Tower Minor Alarm",
+      "initial_timeout_sec": 180,
+      "steps": [
+        {
+          "step": 1,
+          "timeout_sec": 0,
+          "role": "Regional Field Ops Coordinator",
+          "contact": "Sunil Verma (Mumbai Circle Field Desk)",
+          "channels": [
+            "Dashboard Queue",
+            "Email Digest"
+          ],
+          "action": "Track cell status and dispatch local maintenance"
+        }
+      ]
+    }
+  ]
+}

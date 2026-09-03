@@ -1,0 +1,104 @@
+[
+  {
+    "id": "SVC-UPI-PAY",
+    "name": "National Unified Payment Interface (UPI) Gateway",
+    "tier": "P0-MissionCritical",
+    "revenue_loss_per_sec_inr": 8540,
+    "sla_target_pct": 99.999,
+    "host_node": "SRV-PAY-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-03",
+      "SRV-PAY-01",
+      "FW-MUM-01"
+    ],
+    "impact_description": "Real-time bank transactions, QR merchant payments, credit card settlement failures",
+    "active_subscribers_impacted": 480000
+  },
+  {
+    "id": "SVC-5G-VOLTE",
+    "name": "5G Ultra-Low Latency & VoLTE Voice Carrier Network",
+    "tier": "P0-MissionCritical",
+    "revenue_loss_per_sec_inr": 6200,
+    "sla_target_pct": 99.99,
+    "host_node": "BTS-MUM-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-01",
+      "AS-MUM-02",
+      "BSC-MUM-01",
+      "BTS-MUM-01",
+      "BTS-MUM-02",
+      "BTS-MUM-03",
+      "BTS-MUM-04"
+    ],
+    "impact_description": "Voice call drops, emergency 112 failure, mobile internet blackout in Mumbai circle",
+    "active_subscribers_impacted": 120500
+  },
+  {
+    "id": "SVC-AUTH-AAA",
+    "name": "Subscriber SIM AAA & HLR/HSS Registration API",
+    "tier": "P0-MissionCritical",
+    "revenue_loss_per_sec_inr": 3800,
+    "sla_target_pct": 99.999,
+    "host_node": "SRV-AUTH-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-03",
+      "SRV-AUTH-01"
+    ],
+    "impact_description": "New data session attachment drops, SIM roaming authentication failures",
+    "active_subscribers_impacted": 350000
+  },
+  {
+    "id": "SVC-SMS-BANK",
+    "name": "Banking OTP & 2FA High-Priority Delivery Engine",
+    "tier": "P1-High",
+    "revenue_loss_per_sec_inr": 2100,
+    "sla_target_pct": 99.95,
+    "host_node": "SRV-SMS-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-03",
+      "SRV-SMS-01"
+    ],
+    "impact_description": "Netbanking OTP delays, card transaction 2FA delivery timeouts",
+    "active_subscribers_impacted": 95000
+  },
+  {
+    "id": "SVC-DNS-CORE",
+    "name": "Core Recursive Internet DNS Resolver",
+    "tier": "P1-High",
+    "revenue_loss_per_sec_inr": 1500,
+    "sla_target_pct": 99.99,
+    "host_node": "SRV-DNS-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-03",
+      "SRV-DNS-01"
+    ],
+    "impact_description": "Broadband domain lookup latency, web browsing failure",
+    "active_subscribers_impacted": 180000
+  },
+  {
+    "id": "SVC-FTTH-BB",
+    "name": "BharatFiber Gigabit Home Broadband",
+    "tier": "P2-Medium",
+    "revenue_loss_per_sec_inr": 950,
+    "sla_target_pct": 99.9,
+    "host_node": "OLT-MUM-01",
+    "dependent_infrastructure": [
+      "ER-MUM-01",
+      "CS-MUM-01",
+      "AS-MUM-01",
+      "OLT-MUM-01"
+    ],
+    "impact_description": "Home WiFi disconnection, GPON optical terminal alarms",
+    "active_subscribers_impacted": 18000
+  }
+]
