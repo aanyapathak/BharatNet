@@ -196,7 +196,7 @@ async def run_fiber_cut_storm_task():
             timestamp=now,
             formatted_time=time.strftime('%H:%M:%S', time.localtime(now)),
             device_id=ev["device_id"],
-            device_name=node.get("name", ev["pevice_id"]),
+            device_name=node.get("name", ev["device_id"]),
             device_type=node.get("type", "unknown"),
             location=node.get("location", "Mumbai-BKC"),
             alert_type=ev["alert_type"],

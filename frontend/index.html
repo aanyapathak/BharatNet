@@ -830,6 +830,7 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
       </div>
     </div>
     <div class="topbar-right">
+      <span class="pill" id="backend-status-pill" style="border-color:var(--ok); color:var(--ok); font-family:var(--mono); font-size:10px; font-weight:600;">● BACKEND CONNECTED</span>
       <span class="pill" id="net-health-pill">NETWORK HEALTHY</span>
       <span class="pill state-normal" id="state-pill">NORMAL OPERATIONS</span>
       <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">◐</button>
@@ -2942,6 +2943,21 @@ resetBtn.addEventListener('click', ()=>{
 
 // Backend Telemetry Sync: WebSocket + REST polling
 window.BACKEND_METRICS = null;
+let telemetryWs = null;
+
+function updateBackendStatusPill(connected) {
+  const pill = document.getElementById('backend-status-pill');
+  if (!pill) return;
+  if (connected) {
+    pill.textContent = '● BACKEND CONNECTED';
+    pill.style.color = 'var(--ok)';
+    pill.style.borderColor = 'var(--ok)';
+  } else {
+    pill.textContent = '○ CONNECTING...';
+    pill.style.color = 'var(--amber)';
+    pill.style.borderColor = 'var(--amber)';
+  }
+}
 
 async function fetchBackendMetrics(){
   try {
@@ -2951,32 +2967,124 @@ async function fetchBackendMetrics(){
       window.BACKEND_METRICS = data;
       renderMTTR(SIM.phase !== 'normal');
       updateLossAvoided();
+      updateBackendStatusPill(true);
+    } else {
+      updateBackendStatusPill(false);
     }
-  } catch(e){}
+  } catch(e){
+    updateBackendStatusPill(false);
+  }
 }
 fetchBackendMetrics();
 setInterval(fetchBackendMetrics, 3000);
 
-try {
-  const ws = new WebSocket('ws://localhost:8000/ws/telemetry');
-  ws.onopen = () => console.log('Connected to BharatNet AIOps Backend telemetry');
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if(msg.type === 'INIT_SNAPSHOT' || msg.type === 'METRICS_UPDATE'){
-        const m = msg.type === 'INIT_SNAPSHOT' ? msg.data.metrics : msg.data;
-        if(m){
-          window.BACKEND_METRICS = m;
-          renderMTTR(SIM.phase !== 'normal');
-          updateLossAvoided();
+function initTelemetryWs(){
+  try {
+    telemetryWs = new WebSocket('ws://localhost:8000/ws/telemetry');
+    
+    telemetryWs.onopen = () => {
+      console.log('Connected to BharatNet AIOps Backend telemetry');
+      updateBackendStatusPill(true);
+      logEvent('BACKEND TELEMETRY ENGINE CONNECTED (PORT 8000)', 'ok');
+    };
+
+    telemetryWs.onclose = () => {
+      updateBackendStatusPill(false);
+      setTimeout(initTelemetryWs, 2500);
+    };
+
+    telemetryWs.onerror = () => {
+      updateBackendStatusPill(false);
+      telemetryWs.close();
+    };
+
+    telemetryWs.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        
+        // 1. Metrics update
+        if(msg.type === 'INIT_SNAPSHOT' || msg.type === 'METRICS_UPDATE'){
+          const m = msg.type === 'INIT_SNAPSHOT' ? msg.data.metrics : msg.data;
+          if(m){
+            window.BACKEND_METRICS = m;
+            renderMTTR(SIM.phase !== 'normal');
+            updateLossAvoided();
+          }
         }
-      }
-      if (msg.type === 'ALERT_STREAM' && SIM.phase === 'normal') {
-        logEvent(msg.data.description, msg.data.severity === 'CRITICAL' ? 'crit' : 'info');
-      }
-    } catch(e){}
-  };
-} catch(e){}
+
+        // 2. Incident correlation update
+        if(msg.type === 'INCIDENTS_UPDATE' || msg.type === 'INIT_SNAPSHOT'){
+          const incs = (msg.type === 'INIT_SNAPSHOT' ? msg.data.incidents : msg.data) || [];
+          const activeInc = incs.find(i => i.status !== 'RESOLVED');
+          if(activeInc && SIM.phase !== 'normal' && SIM.phase !== 'healthy'){
+            if(activeInc.revenue_loss_rate_inr_per_sec){
+              SIM.financialRate = activeInc.revenue_loss_rate_inr_per_sec;
+              SIM.peakRate = Math.max(SIM.peakRate, activeInc.revenue_loss_rate_inr_per_sec);
+            }
+            if(activeInc.accumulated_loss_inr){
+              SIM.financialTotal = Math.max(SIM.financialTotal, activeInc.accumulated_loss_inr);
+            }
+            if(activeInc.root_cause){
+              document.getElementById('command-strip')?.classList.add('active');
+              const rc = document.getElementById('cs-rootcause');
+              if(rc) rc.textContent = activeInc.root_cause.root_device_id + ' UPLINK';
+              const conf = document.getElementById('cs-confidence');
+              if(conf) conf.textContent = (activeInc.root_cause.confidence_score ? Math.round(activeInc.root_cause.confidence_score * 100) : 89) + '%';
+              const aff = document.getElementById('cs-affected');
+              if(aff) aff.textContent = (activeInc.blast_radius_devices?.length || 11) + ' DEVICES';
+              const imp = document.getElementById('cs-impact');
+              if(imp) imp.textContent = '₹' + Math.round(activeInc.revenue_loss_rate_inr_per_sec || 8547).toLocaleString('en-IN') + '/sec';
+            }
+            updateOutageCost();
+            updateLossAvoided();
+          }
+        }
+
+        // 3. Alert stream update
+        if(msg.type === 'ALERT_STREAM'){
+          const sev = msg.data.severity === 'CRITICAL' ? 'crit' : (msg.data.severity === 'WARNING' ? 'warn' : 'info');
+          logEvent(`[${msg.data.device_id || 'NET'}] ${msg.data.description}`, sev);
+          
+          if(msg.data.device_id && nodeById[msg.data.device_id]){
+            if(msg.data.severity === 'CRITICAL'){
+              setNodeStatus(msg.data.device_id, 'critical');
+              SIM.blastSet.add(msg.data.device_id);
+              renderHealthBand();
+              renderUsers();
+              renderCompanies();
+            } else if(msg.data.severity === 'WARNING' && nodeById[msg.data.device_id].status === 'healthy'){
+              setNodeStatus(msg.data.device_id, 'degraded');
+              SIM.blastSet.add(msg.data.device_id);
+              renderHealthBand();
+              renderUsers();
+              renderCompanies();
+            }
+          }
+        }
+
+        // 4. Topology status update
+        if(msg.type === 'TOPOLOGY_STATUS' && SIM.phase !== 'normal' && SIM.phase !== 'healthy'){
+          const statuses = msg.data || {};
+          Object.entries(statuses).forEach(([nodeId, state]) => {
+            if(nodeById[nodeId]){
+              if(state === 'CRITICAL_ROOT' || state === 'IMPACTED'){
+                setNodeStatus(nodeId, state === 'CRITICAL_ROOT' ? 'critical' : 'degraded');
+                SIM.blastSet.add(nodeId);
+              }
+            }
+          });
+          renderHealthBand();
+          renderUsers();
+          renderCompanies();
+        }
+
+      } catch(e){}
+    };
+  } catch(e){
+    updateBackendStatusPill(false);
+  }
+}
+initTelemetryWs();
  
 /* ==================================================================
    19. INTELLIGENCE VIEWS LOGIC (REAL WORLD, COMPANIES, USERS)
