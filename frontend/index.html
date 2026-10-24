@@ -447,22 +447,128 @@ button{font-family:inherit; cursor:pointer;}
 }
 .panel h3 .live-dot{ width:6px; height:6px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok); }
  
-#event-log{ height:220px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:.5em; }
-.log-row{ font-family:var(--mono); font-size:.72rem; line-height:1.4; display:flex; gap:.7em; color:var(--ink-1); animation:logIn .3s ease; }
-.log-row .t{ color:var(--ink-2); flex-shrink:0; }
-.log-row.sev-crit .m{ color:var(--crit); }
-.log-row.sev-warn .m{ color:var(--amber); }
-.log-row.sev-ok .m{ color:var(--ok); }
-.log-row.sev-info .m{ color:var(--ink-1); }
+/* ============================================================
+   ENHANCED EVENT LOG & TIMELINE STYLES
+   ============================================================ */
+.panel-head-flex{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.4em; }
+.panel-head-flex h3{ margin-bottom:0 !important; }
+.log-count-total, .tl-status-summary{ font-family:var(--mono); font-size:.55rem; color:var(--ink-2); letter-spacing:.04em; }
+
+/* Event Log Filter Bar */
+.log-filter-bar{ display:flex; gap:.25em; margin-bottom:.45em; }
+.log-f-btn{
+  background:var(--bg-2);
+  border:1px solid var(--panel-line);
+  color:var(--ink-2);
+  font-family:var(--mono);
+  font-size:.54rem;
+  letter-spacing:.04em;
+  padding:.2em .45em;
+  border-radius:2px;
+  cursor:pointer;
+  transition:all .18s ease;
+}
+.log-f-btn:hover{ color:var(--ink-0); border-color:var(--ink-2); }
+.log-f-btn.active{
+  background:rgba(63,214,196,0.12);
+  border-color:var(--fiber);
+  color:var(--fiber);
+  font-weight:700;
+}
+
+/* Event Log Container & Rows */
+#event-log{
+  height:180px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:.35em;
+  scrollbar-gutter:stable;
+  padding-right:.25em;
+}
+.log-card{
+  background:var(--bg-2);
+  border:1px solid var(--panel-line);
+  border-radius:2px;
+  padding:.35em .5em;
+  font-size:.66rem;
+  line-height:1.32;
+  transition:background .2s ease, border-color .2s ease;
+  animation:logIn .25s ease;
+}
+.log-card.type-alert{ border-left:2px solid var(--crit); }
+.log-card.type-impact{ border-left:2px solid var(--amber); }
+.log-card.type-analysis{ border-left:2px solid var(--signal); }
+.log-card.type-recovery{ border-left:2px solid var(--fiber); }
+.log-card.type-verified{ border-left:2px solid var(--ok); }
+
+.log-meta-row{ display:flex; align-items:center; gap:.35em; flex-wrap:wrap; margin-bottom:.15em; }
+.log-time{ font-family:var(--mono); font-size:.58rem; color:var(--ink-2); flex-shrink:0; }
+.log-tag{ font-family:var(--mono); font-size:.52rem; font-weight:700; text-transform:uppercase; padding:.06em .28em; border-radius:2px; letter-spacing:.03em; }
+.tag-alert{ background:rgba(239,91,91,0.14); color:var(--crit); }
+.tag-impact{ background:rgba(242,169,59,0.14); color:var(--amber); }
+.tag-analysis{ background:rgba(95,180,255,0.14); color:var(--signal); }
+.tag-recovery{ background:rgba(63,214,196,0.14); color:var(--fiber); }
+.tag-verified{ background:rgba(57,201,138,0.14); color:var(--ok); }
+
+.log-device{ font-family:var(--mono); font-size:.58rem; font-weight:600; color:var(--ink-0); }
+.log-count-pill{ font-family:var(--mono); font-size:.52rem; font-weight:700; background:rgba(255,255,255,0.06); color:var(--amber); padding:.04em .28em; border-radius:10px; border:1px solid rgba(242,169,59,0.3); }
+.log-sim-badge{ font-family:var(--mono); font-size:.5rem; color:var(--ink-2); background:rgba(255,255,255,0.03); padding:.04em .26em; border-radius:2px; margin-left:auto; }
+
+.log-plain{ color:var(--ink-0); font-size:.67rem; line-height:1.32; margin-bottom:.12em; }
+.log-details{ font-family:var(--mono); font-size:.56rem; color:var(--ink-2); margin-top:.15em; }
+.log-details summary{ cursor:pointer; color:var(--ink-2); user-select:none; }
+.log-details summary:hover{ color:var(--ink-1); }
+.log-details-content{ margin-top:.2em; background:var(--bg-0); padding:.25em .4em; border-radius:2px; border:1px solid rgba(255,255,255,0.03); color:var(--ink-1); line-height:1.32; white-space:pre-wrap; }
+
+/* Timeline Styles */
+.timeline{
+  height:220px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:.45em;
+  padding-right:.3em;
+  scrollbar-gutter:stable;
+}
+.tl-card{
+  display:flex;
+  gap:.5em;
+  align-items:flex-start;
+  padding:.32em .42em;
+  background:var(--bg-2);
+  border:1px solid var(--panel-line);
+  border-radius:2px;
+  transition:all .25s ease;
+}
+.tl-card.status-completed{ border-color:rgba(57,201,138,0.25); }
+.tl-card.status-in_progress{ border-color:var(--fiber); background:rgba(63,214,196,0.03); }
+.tl-card.status-pending{ opacity:.55; }
+
+.tl-indicator{ display:flex; flex-direction:column; align-items:center; flex-shrink:0; margin-top:.2em; }
+.tl-circle{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--ink-2);
+  transition:background .25s ease, box-shadow .25s ease;
+}
+.tl-card.status-completed .tl-circle{ background:var(--ok); box-shadow:0 0 5px var(--ok); }
+.tl-card.status-in_progress .tl-circle{ background:var(--fiber); box-shadow:0 0 7px var(--fiber); animation:pulseDot .8s infinite alternate; }
+
+.tl-body{ flex:1; min-width:0; }
+.tl-top-row{ display:flex; align-items:center; justify-content:space-between; gap:.35em; margin-bottom:.12em; }
+.tl-elapsed{ font-family:var(--mono); font-size:.58rem; font-weight:700; color:var(--fiber); }
+.tl-card.status-pending .tl-elapsed{ color:var(--ink-2); font-weight:normal; }
+.tl-status-chip{ font-family:var(--mono); font-size:.5rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:.05em .28em; border-radius:2px; }
+.tl-chip-completed{ background:rgba(57,201,138,0.15); color:var(--ok); }
+.tl-chip-in_progress{ background:rgba(63,214,196,0.15); color:var(--fiber); }
+.tl-chip-pending{ background:rgba(255,255,255,0.04); color:var(--ink-2); }
+
+.tl-milestone-title{ font-size:.7rem; font-weight:600; color:var(--ink-0); line-height:1.25; }
+.tl-milestone-desc{ font-size:.64rem; color:var(--ink-1); line-height:1.28; margin-top:.08em; }
+.tl-milestone-result{ font-family:var(--mono); font-size:.56rem; color:var(--ink-2); margin-top:.18em; line-height:1.28; background:rgba(0,0,0,0.2); padding:.18em .3em; border-radius:2px; }
 @keyframes logIn{ from{ opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;} }
- 
-.timeline{ display:flex; flex-direction:column; gap:.9em; }
-.tl-step{ display:flex; gap:.8em; opacity:.3; transition:opacity .4s ease; }
-.tl-step.done{ opacity:1; }
-.tl-dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-2); margin-top:.3em; flex-shrink:0; transition:background .3s ease, box-shadow .3s ease; }
-.tl-step.done .tl-dot{ background:var(--fiber); box-shadow:0 0 8px var(--fiber); }
-.tl-body .tl-t{ font-family:var(--mono); font-size:.66rem; color:var(--ink-2); }
-.tl-body .tl-l{ font-size:.78rem; color:var(--ink-0); margin-top:.1em; }
  
 .runbook-steps{ display:flex; flex-direction:column; gap:.6em; margin-bottom:1em; }
 .rb-step{ display:flex; gap:.7em; align-items:flex-start; font-size:.78rem; color:var(--ink-2); opacity:.4; transition:opacity .3s ease, color .3s ease; }
@@ -873,11 +979,24 @@ footer{ text-align:center; padding:3em 1em; color:var(--ink-2); font-size:.7rem;
  
     <div class="side-col">
       <div class="panel">
-        <h3>NETWORK EVENT LOG <span class="live-dot"></span></h3>
+        <div class="panel-head-flex">
+          <h3>NETWORK EVENT LOG <span class="live-dot"></span></h3>
+          <span class="log-count-total" id="log-count-total">0 events</span>
+        </div>
+        <div class="log-filter-bar">
+          <button class="log-f-btn active" data-filter="all" onclick="EVENT_LOG_ENGINE.setFilter('all')">ALL</button>
+          <button class="log-f-btn" data-filter="alert" onclick="EVENT_LOG_ENGINE.setFilter('alert')">ALERTS</button>
+          <button class="log-f-btn" data-filter="impact" onclick="EVENT_LOG_ENGINE.setFilter('impact')">IMPACT</button>
+          <button class="log-f-btn" data-filter="analysis" onclick="EVENT_LOG_ENGINE.setFilter('analysis')">ANALYSIS</button>
+          <button class="log-f-btn" data-filter="recovery" onclick="EVENT_LOG_ENGINE.setFilter('recovery')">RECOVERY</button>
+        </div>
         <div id="event-log"></div>
       </div>
       <div class="panel">
-        <h3>ESCALATION TIMELINE</h3>
+        <div class="panel-head-flex">
+          <h3>ESCALATION TIMELINE</h3>
+          <span class="tl-status-summary" id="tl-status-summary">STANDBY</span>
+        </div>
         <div class="timeline" id="timeline"></div>
       </div>
       <div class="panel">
@@ -1944,45 +2063,555 @@ function tickClock(){
 setInterval(tickClock, 1000);
  
 /* ==================================================================
-   10. EVENT LOG
+   10. ENHANCED NETWORK EVENT LOG & ESCALATION TIMELINE ENGINES
    ================================================================== */
-function logEvent(msg, sev){
-  const log = document.getElementById('event-log');
-  const row = document.createElement('div');
-  row.className = 'log-row sev-'+(sev||'info');
-  const time = document.getElementById('systime').textContent.replace(' IST','');
-  row.innerHTML = `<span class="t">${time}</span><span class="m">${msg}</span>`;
-  log.appendChild(row);
-  while(log.children.length>40) log.removeChild(log.firstChild);
-  log.scrollTop = log.scrollHeight;
-}
- 
-/* ==================================================================
-   11. ESCALATION TIMELINE
-   ================================================================== */
-const TIMELINE_STEPS = [
-  {t:'+00:00', l:'Alert detected'},
-  {t:'+00:07', l:'Correlation started'},
-  {t:'+00:12', l:'Root cause identified'},
-  {t:'+00:15', l:'SEV-1 created'},
-  {t:'+00:18', l:'Engineer notified'},
-  {t:'+00:24', l:'Runbook approved'},
-  {t:'+00:30', l:'Recovery initiated'},
-  {t:'+00:42', l:'Network restored'},
-];
-function renderTimeline(){
-  const el = document.getElementById('timeline');
-  el.innerHTML = TIMELINE_STEPS.map((s,i)=>`
-    <div class="tl-step" data-i="${i}">
-      <div class="tl-dot"></div>
-      <div class="tl-body"><div class="tl-t">${s.t}</div><div class="tl-l">${s.l}</div></div>
-    </div>`).join('');
-}
-renderTimeline();
-function advanceTimeline(i){
-  const step = document.querySelector(`.tl-step[data-i="${i}"]`);
-  if(step) step.classList.add('done');
-}
+
+// Global state for Timeline and Event Log
+window.TIMELINE_ENGINE = {
+  firstAlertTime: null,
+  isRecovered: false,
+  steps: [
+    {
+      id: 0,
+      title: 'Alert detected',
+      desc: 'A network problem was detected.',
+      targetOffset: 0,
+      elapsed: null,
+      status: 'pending', // 'completed' | 'in_progress' | 'pending' | 'failed' | 'cancelled'
+      result: null
+    },
+    {
+      id: 1,
+      title: 'Correlation started',
+      desc: 'Related alerts are being grouped.',
+      targetOffset: 4,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 2,
+      title: 'Root cause identified',
+      desc: 'A probable cause was identified.',
+      targetOffset: 7,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 3,
+      title: 'SEV-1 created',
+      desc: 'A critical incident was opened.',
+      targetOffset: 8,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 4,
+      title: 'Engineer notified',
+      desc: 'The assigned engineer was notified.',
+      targetOffset: 10,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 5,
+      title: 'Runbook approved',
+      desc: 'Awaiting approval',
+      targetOffset: 15,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 6,
+      title: 'Recovery initiated',
+      desc: 'Recovery actions started.',
+      targetOffset: 20,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    },
+    {
+      id: 7,
+      title: 'Network restored',
+      desc: 'Recovery verification pending',
+      targetOffset: 30,
+      elapsed: null,
+      status: 'pending',
+      result: null
+    }
+  ],
+
+  formatOffset(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `+${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  },
+
+  advance(i, meta = {}) {
+    if (this.firstAlertTime === null) {
+      this.firstAlertTime = Date.now();
+    }
+    const elapsedSec = Math.max(0, Math.round((Date.now() - this.firstAlertTime) / 1000));
+    const step = this.steps[i];
+    if (!step) return;
+
+    step.status = 'completed';
+    step.elapsed = this.formatOffset(elapsedSec);
+
+    if (meta.plain) step.desc = meta.plain;
+    if (meta.result) step.result = meta.result;
+
+    // Special handling for specific steps
+    if (i === 2 && !step.result) {
+      step.result = 'ER-MUM-01 UPLINK (89% confidence)';
+    }
+    if (i === 4 && !step.result) {
+      step.result = 'Rajesh Kumar (NOC Lead) · [Simulated notification sent]';
+    }
+    if (i === 5) {
+      step.desc = meta.plain || 'The recovery playbook was approved.';
+      if (!step.result) step.result = 'Runbook RB-014 authorized';
+    }
+    if (i === 7) {
+      step.desc = meta.plain || 'All recovery checks passed; normal operation confirmed.';
+      this.isRecovered = true;
+    }
+
+    // Set next step to in_progress if still pending and not recovered
+    if (i + 1 < this.steps.length && !this.isRecovered) {
+      if (this.steps[i + 1].status === 'pending') {
+        this.steps[i + 1].status = 'in_progress';
+      }
+    }
+
+    this.render();
+  },
+
+  reset() {
+    this.firstAlertTime = null;
+    this.isRecovered = false;
+    this.steps.forEach((s) => {
+      s.elapsed = null;
+      s.status = 'pending';
+      s.result = null;
+      if (s.id === 5) s.desc = 'Awaiting approval';
+      else if (s.id === 7) s.desc = 'Recovery verification pending';
+      else if (s.id === 0) s.desc = 'A network problem was detected.';
+      else if (s.id === 1) s.desc = 'Related alerts are being grouped.';
+      else if (s.id === 2) s.desc = 'A probable cause was identified.';
+      else if (s.id === 3) s.desc = 'A critical incident was opened.';
+      else if (s.id === 4) s.desc = 'The assigned engineer was notified.';
+      else if (s.id === 6) s.desc = 'Recovery actions started.';
+    });
+    this.render();
+  },
+
+  render() {
+    const el = document.getElementById('timeline');
+    if (!el) return;
+
+    const summaryEl = document.getElementById('tl-status-summary');
+    if (summaryEl) {
+      if (this.isRecovered) {
+        summaryEl.textContent = 'RESTORED · ALL VERIFIED';
+        summaryEl.style.color = 'var(--ok)';
+      } else {
+        const completedCount = this.steps.filter(s => s.status === 'completed').length;
+        if (completedCount === 0) {
+          summaryEl.textContent = 'STANDBY';
+          summaryEl.style.color = 'var(--ink-2)';
+        } else {
+          summaryEl.textContent = `ACTIVE · STEP ${Math.min(completedCount + 1, 8)} OF 8`;
+          summaryEl.style.color = 'var(--fiber)';
+        }
+      }
+    }
+
+    el.innerHTML = this.steps.map(s => {
+      const isDone = s.status === 'completed';
+      const isProg = s.status === 'in_progress';
+      const isPend = s.status === 'pending';
+
+      const timeLabel = isDone
+        ? s.elapsed
+        : `Target: ${this.formatOffset(s.targetOffset)}`;
+
+      const chipClass = isDone ? 'tl-chip-completed' : (isProg ? 'tl-chip-in_progress' : 'tl-chip-pending');
+      const chipText = isDone ? 'COMPLETED' : (isProg ? 'IN PROGRESS' : 'PENDING');
+
+      return `
+        <div class="tl-card status-${s.status}">
+          <div class="tl-indicator">
+            <div class="tl-circle"></div>
+          </div>
+          <div class="tl-body">
+            <div class="tl-top-row">
+              <span class="tl-elapsed">${timeLabel}</span>
+              <span class="tl-status-chip ${chipClass}">${chipText}</span>
+            </div>
+            <div class="tl-milestone-title">${s.title}</div>
+            <div class="tl-milestone-desc">${s.desc}</div>
+            ${s.result ? `<div class="tl-milestone-result">${s.result}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+};
+
+window.advanceTimeline = function(i, meta) {
+  window.TIMELINE_ENGINE.advance(i, meta);
+};
+
+window.renderTimeline = function() {
+  window.TIMELINE_ENGINE.render();
+};
+
+window.TIMELINE_STEPS = window.TIMELINE_ENGINE.steps;
+
+
+// ==================================================================
+// EVENT LOG ENGINE
+// ==================================================================
+window.EVENT_LOG_ENGINE = {
+  events: [],
+  activeFilter: 'all',
+
+  setFilter(f) {
+    this.activeFilter = f;
+    document.querySelectorAll('.log-f-btn').forEach(b => {
+      if (b.getAttribute('data-filter') === f) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    this.render();
+  },
+
+  reset() {
+    this.events = [];
+    this.render();
+  },
+
+  parseEvent(rawMsg, sev) {
+    let clean = (rawMsg || '').trim();
+    // Strip redundant leading device prefix like [AS-MUM-01] [AS-MUM-01]
+    clean = clean.replace(/^\[([A-Za-z0-9_-]+)\]\s*\[\1\]\s*/g, '[$1] ');
+
+    let device = null;
+    const bracketMatch = clean.match(/^\[([A-Za-z0-9_.-]+)\]\s*(.*)$/);
+    if (bracketMatch) {
+      device = bracketMatch[1];
+      clean = bracketMatch[2].trim();
+    }
+
+    let type = 'alert';
+    let typeLabel = 'Network alert';
+    let plain = '';
+    let details = '';
+
+    const lower = clean.toLowerCase();
+
+    // 1. Optical / Power signal
+    if (lower.includes('optical power') || lower.includes('optical signal') || lower.includes('inbound optical')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Very weak optical signal detected on the core connection.';
+      const dbmMatch = clean.match(/-?\d+(\.\d+)?\s*dBm/i);
+      const dbmVal = dbmMatch ? dbmMatch[0] : '-32.4 dBm';
+      details = `Interface inbound optical power: ${dbmVal}. Optical budget severely degraded; risk of frame loss.`;
+      if (!device) device = 'CS-MUM-01';
+    }
+    // 2. Packet Loss
+    else if (lower.includes('packet loss')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Almost all traffic to the gateway is being lost.';
+      const lossMatch = clean.match(/\d+(\.\d+)?%/);
+      const lossVal = lossMatch ? lossMatch[0] : '98.4%';
+      details = `Interface packet loss: ${lossVal}. Ingress/egress queue dropping packets.`;
+      if (!device) device = 'AS-MUM-01';
+    }
+    // 3. Uplink / Fiber Link Down
+    else if (lower.includes('uplink link down') || lower.includes('link down') || lower.includes('fiber cut')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Primary optical fiber connection dropped completely.';
+      details = `Associated trunk link: FIB-MUM-A. Physical carrier signal lost (LOS alarm triggered).`;
+      if (!device) device = 'ER-MUM-01';
+    }
+    // 4. OSPF Neighbor Lost
+    else if (lower.includes('ospf neighbor lost')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Core routing neighbor lost; routing convergence disrupted.';
+      details = `OSPF state changed from FULL to DOWN. Dead-timer expired on core interface.`;
+      if (!device) device = 'CS-MUM-01';
+    }
+    // 5. BGP Session Dropped
+    else if (lower.includes('bgp session dropped') || lower.includes('bgp peer')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Border routing peering dropped; external exchange unreachable.';
+      details = `BGP session state transitioned to IDLE. Hold-timer expired on border peering link.`;
+      if (!device) device = 'CS-MUM-02';
+    }
+    // 6. Interface Flapping
+    else if (lower.includes('interface flapping')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Cell tower controller uplink is rapidly disconnecting and reconnecting.';
+      details = `Flap frequency: 14 transitions/min. Dampening penalty applied to prevent flapping loop.`;
+      if (!device) device = 'BSC-MUM-01';
+    }
+    // 7. High CPU
+    else if (lower.includes('high cpu')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Mobile cell site processor overwhelmed by retransmission requests.';
+      details = `CPU load: 96.8%. Buffer exhaustion detected on control-plane packet processor.`;
+      if (!device) device = 'BTS-MUM-014';
+    }
+    // 8. Service Timeout - DNS
+    else if (lower.includes('dns-svc') || lower.includes('service timeout — dns')) {
+      type = 'impact';
+      typeLabel = 'Service impact';
+      plain = 'Domain name lookups are timing out for connected subscribers.';
+      details = `DNS query latency > 4,200ms. SERVFAIL response rate: 84.2%.`;
+      if (!device) device = 'DNS-SVC';
+    }
+    // 9. Service Timeout - Payment / Auth / UPI
+    else if (lower.includes('auth-svc') || lower.includes('payment') || lower.includes('timeout — auth')) {
+      type = 'impact';
+      typeLabel = 'Service impact';
+      plain = 'Nearly all payment and subscriber authorization requests are timing out.';
+      details = `HTTP 504 Gateway Timeout rate: 99.8%; estimated loss rate: ₹8,547/second.`;
+      if (!device) device = 'Payment gateway';
+    }
+    // 10. Customer Impact Retail
+    else if (lower.includes('customer impact')) {
+      type = 'impact';
+      typeLabel = 'Service impact';
+      plain = 'Retail broadband and 5G mobile subscribers experiencing degraded connectivity.';
+      details = `Blast radius: Mumbai metro ring. Impacting active sessions and streaming services.`;
+      if (!device) device = 'Retail Broadband';
+    }
+    // 11. Correlation engine
+    else if (lower.includes('correlation engine activated')) {
+      type = 'analysis';
+      typeLabel = 'Analysis';
+      plain = 'Related alerts are being checked for a shared cause.';
+      details = `Topology engine analyzing 27 cascading alarms across optical, IP, and service layers.`;
+      if (!device) device = 'AIOps Engine';
+    }
+    // 12. Root Cause Identified
+    else if (lower.includes('root cause identified')) {
+      type = 'analysis';
+      typeLabel = 'Analysis';
+      plain = 'Suspected fault identified on ER-MUM-01’s uplink.';
+      details = `Associated fiber link: FIB-MUM-A. Root-cause confidence score: 89%.`;
+      if (!device) device = 'ER-MUM-01';
+    }
+    // 13. Backup Route / Alternate Route
+    else if (lower.includes('alternate route') || lower.includes('backup route')) {
+      type = 'recovery';
+      typeLabel = 'Recovery action';
+      plain = 'Backup route through CR-MUM-02 activated.';
+      details = `Failover initiated to Ring B backup path. Convergence in progress.`;
+      if (!device) device = 'CR-MUM-02';
+    }
+    // 14. Recovery wave / Runbook step
+    else if (lower.includes('recovery wave') || lower.includes('runbook step')) {
+      type = 'recovery';
+      typeLabel = 'Recovery action';
+      plain = 'Automated recovery sequence executing on core uplink.';
+      details = `Executing runbook RB-014 actions. Interface soft-reset and alternate route injection.`;
+      if (!device) device = 'ER-MUM-01';
+    }
+    // 15. Manual approval
+    else if (lower.includes('manual approval requested')) {
+      type = 'recovery';
+      typeLabel = 'Recovery action';
+      plain = 'Safety check requires engineer approval before changing live routes.';
+      details = `Remediation action RB-ACT-001 awaiting confirmation by assigned incident engineer.`;
+      if (!device) device = 'Remediation Gate';
+    }
+    // 16. Network Restored / Verified
+    else if (lower.includes('network restored') || lower.includes('all systems nominal')) {
+      type = 'verified';
+      typeLabel = 'Recovery verified';
+      plain = 'All recovery checks passed; normal network operation confirmed.';
+      details = `Carrier sync restored, 0% packet loss, all dependent services healthy.`;
+      if (!device) device = 'NOC Operations';
+    }
+    // 17. Telemetry connection
+    else if (lower.includes('backend telemetry engine connected')) {
+      type = 'analysis';
+      typeLabel = 'Analysis';
+      plain = 'Real-time telemetry pipeline connected to local backend server.';
+      details = `Active stream established on port 8000 for topology metrics and event telemetry.`;
+      if (!device) device = 'Backend Telemetry';
+    }
+    // 18. Weather / Environmental
+    else if (lower.includes('environmental risk')) {
+      type = 'alert';
+      typeLabel = 'Network alert';
+      plain = 'Severe weather alert in Mumbai region creating heightened asset vulnerability.';
+      details = clean;
+      if (!device) device = 'Weather Feed';
+    }
+    // 19. Simulation started
+    else if (lower.includes('simulation started')) {
+      type = 'analysis';
+      typeLabel = 'Analysis';
+      plain = 'Mumbai fiber-cut failure scenario initiated.';
+      details = `Injecting simulated link degradation and physical cut on primary core fiber.`;
+      if (!device) device = 'Scenario Engine';
+    }
+    // Fallback:
+    else {
+      if (sev === 'crit') {
+        type = 'alert';
+        typeLabel = 'Network alert';
+      } else if (sev === 'warn') {
+        type = 'impact';
+        typeLabel = 'Service impact';
+      } else if (sev === 'ok') {
+        type = 'recovery';
+        typeLabel = 'Recovery action';
+      } else {
+        type = 'analysis';
+        typeLabel = 'Analysis';
+      }
+      plain = clean;
+      details = `Raw event: ${clean}`;
+    }
+
+    return { type, typeLabel, device, plain, details };
+  },
+
+  log(rawMsg, sev) {
+    const parsed = this.parseEvent(rawMsg, sev);
+    const now = new Date();
+    const timeStr = document.getElementById('systime')
+      ? document.getElementById('systime').textContent.replace(' IST', '').trim()
+      : now.toTimeString().split(' ')[0];
+
+    // Check for grouping: equivalent alert on same device with same plain description
+    const lastEvent = this.events[this.events.length - 1];
+    if (
+      lastEvent &&
+      lastEvent.type === parsed.type &&
+      lastEvent.device === parsed.device &&
+      lastEvent.plain === parsed.plain
+    ) {
+      lastEvent.count += 1;
+      lastEvent.lastTime = timeStr;
+      lastEvent.history.push({ time: timeStr, details: parsed.details });
+      this.render();
+      return;
+    }
+
+    // New distinct event card
+    const eventItem = {
+      id: 'evt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      time: timeStr,
+      firstTime: timeStr,
+      lastTime: timeStr,
+      count: 1,
+      type: parsed.type,
+      typeLabel: parsed.typeLabel,
+      device: parsed.device,
+      plain: parsed.plain,
+      details: parsed.details,
+      simulated: true,
+      history: [{ time: timeStr, details: parsed.details }]
+    };
+
+    this.events.push(eventItem);
+    if (this.events.length > 50) this.events.shift();
+
+    this.render();
+  },
+
+  render() {
+    const el = document.getElementById('event-log');
+    if (!el) return;
+
+    // Filter events
+    const filtered = this.events.filter(e => {
+      if (this.activeFilter === 'all') return true;
+      if (this.activeFilter === 'alert') return e.type === 'alert';
+      if (this.activeFilter === 'impact') return e.type === 'impact';
+      if (this.activeFilter === 'analysis') return e.type === 'analysis';
+      if (this.activeFilter === 'recovery') return e.type === 'recovery' || e.type === 'verified';
+      return true;
+    });
+
+    const countEl = document.getElementById('log-count-total');
+    if (countEl) {
+      countEl.textContent = `${this.events.length} event${this.events.length === 1 ? '' : 's'}`;
+    }
+
+    if (filtered.length === 0) {
+      el.innerHTML = `
+        <div style="font-family:var(--mono); font-size:.65rem; color:var(--ink-2); text-align:center; padding:1.5em 0;">
+          ${this.events.length === 0 ? 'Standby · Waiting for network events...' : 'No events match the selected filter.'}
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = filtered.map(e => {
+      const timeDisplay = e.count > 1
+        ? `${e.firstTime} · Last: ${e.lastTime}`
+        : e.time;
+
+      const tagClass = 'tag-' + (e.type === 'verified' ? 'verified' : e.type);
+
+      const historyHtml = e.count > 1
+        ? `<div style="margin-top:.3em; border-top:1px dashed rgba(255,255,255,0.06); padding-top:.25em;">
+            <div style="color:var(--ink-2); margin-bottom:.15em;">Occurrences (${e.count}):</div>
+            ${e.history.map(h => `<div>${h.time} · ${h.details}</div>`).join('')}
+           </div>`
+        : '';
+
+      return `
+        <div class="log-card type-${e.type}">
+          <div class="log-meta-row">
+            <span class="log-time">${timeDisplay}</span>
+            <span class="log-tag ${tagClass}">${e.typeLabel}</span>
+            ${e.device ? `<span class="log-device">· ${e.device}</span>` : ''}
+            ${e.count > 1 ? `<span class="log-count-pill">×${e.count}</span>` : ''}
+            ${e.simulated ? `<span class="log-sim-badge">[Simulated]</span>` : ''}
+          </div>
+          <div class="log-plain">${e.plain}</div>
+          <details class="log-details">
+            <summary>Technical Details</summary>
+            <div class="log-details-content">
+              <div>${e.details}</div>
+              ${historyHtml}
+            </div>
+          </details>
+        </div>
+      `;
+    }).join('');
+
+    // Auto-scroll to latest
+    el.scrollTop = el.scrollHeight;
+  }
+};
+
+window.logEvent = function(msg, sev) {
+  window.EVENT_LOG_ENGINE.log(msg, sev);
+};
+
+// Initial render
+window.renderTimeline();
+window.EVENT_LOG_ENGINE.render();
+
  
 /* ==================================================================
    12. RUNBOOK
@@ -2513,6 +3142,8 @@ function drawPredictive(){
 window.addEventListener('resize', sizePred);
 sizePred();
 resetPredictiveChart();
+  if(window.EVENT_LOG_ENGINE) EVENT_LOG_ENGINE.reset();
+  if(window.TIMELINE_ENGINE) TIMELINE_ENGINE.reset();
 
 // Continuous real-time financial chart baseline ticker
 function liveFinancialBaselineTicker(){
@@ -2750,7 +3381,7 @@ function runSimulation(){
     setNodeStatus('FIB-MUM-A','critical');
     setNodeStatus('CR-MUM-01','critical');
     logEvent('ER-MUM-01 UPLINK LINK DOWN','crit');
-    advanceTimeline(0);
+    advanceTimeline(0, { result: 'Physical fiber cut on ER-MUM-01' });
     SIM.frozen=false; SIM.financialRate=8547; SIM.peakRate=8547;
     renderUsers(); renderCompanies(); updateOutageCost(); updateLossAvoided();
   }, 300);
@@ -2781,7 +3412,7 @@ function runSimulation(){
   setTimeout(()=>{
     setPhase('correlating');
     logEvent('CORRELATION ENGINE ACTIVATED','warn');
-    advanceTimeline(1);
+    advanceTimeline(1, { result: '27 cascading alerts grouped by topology' });
     renderUsers(); renderCompanies();
   }, 900 + cascade.length*380 + 400);
  
@@ -2790,13 +3421,13 @@ function runSimulation(){
     setPhase('rootcause');
     SIM.confidence = 89;
     logEvent('ROOT CAUSE IDENTIFIED — ER-MUM-01 UPLINK (FIB-MUM-A)','ok');
-    advanceTimeline(2);
+    advanceTimeline(2, { result: 'ER-MUM-01 UPLINK (89% confidence)' });
     document.getElementById('command-strip').classList.add('active');
     document.getElementById('cs-rootcause').textContent='ER-MUM-01 UPLINK';
     document.getElementById('cs-confidence').textContent='89%';
     document.getElementById('cs-affected').textContent='11 DEVICES';
     document.getElementById('cs-impact').textContent='₹8,547/sec';
-    advanceTimeline(3);
+    advanceTimeline(3, { result: 'Incident INC-MUM-FIB-01 (SEV-1 Critical opened)' }); advanceTimeline(4, { result: 'Rajesh Kumar (NOC Lead On-Call) · [Simulated Page/SMS delivered]' });
     renderMTTR(true);
     renderUsers(); renderCompanies();
     map.flyTo(coordOf('ER-MUM-01'), 13, {duration: REDUCED_MOTION?0:1.2});
@@ -2850,13 +3481,13 @@ function runSimulation(){
   setTimeout(()=>{
     setPhase('runbook');
     renderRunbookAssembling();
-    advanceTimeline(5);
+    advanceTimeline(5, { plain: 'The recovery playbook was approved.', result: 'Runbook RB-014 (Core Uplink Recovery) authorized' });
   }, t5);
 }
 
 function beginRecovery(){
   logEvent('RECOVERY WAVE INITIATED FROM ER-MUM-01','ok');
-  advanceTimeline(6);
+  advanceTimeline(6, { result: 'Alternate Ring B active via CR-MUM-02 · Failover initiated' });
   
   // Try to notify backend if available
   try {
@@ -2904,7 +3535,7 @@ function beginRecovery(){
   setTimeout(()=>{
     setPhase('healthy');
     logEvent('NETWORK RESTORED — ALL SYSTEMS NOMINAL','ok');
-    advanceTimeline(7);
+    advanceTimeline(7, { plain: 'All recovery checks passed; normal operation confirmed.', result: 'Carrier sync restored, 0% packet loss, all services healthy' });
     SIM.financialRate = 0;
     freezeFinancial();
     drawFinancial();
@@ -2929,6 +3560,8 @@ resetBtn.addEventListener('click', ()=>{
   SIM.blastSet.clear();
   resetFinancialChart();
   resetPredictiveChart();
+  if(window.EVENT_LOG_ENGINE) EVENT_LOG_ENGINE.reset();
+  if(window.TIMELINE_ENGINE) TIMELINE_ENGINE.reset();
   updateNetworkStatusPills();
   renderUsers();
   renderCompanies();
